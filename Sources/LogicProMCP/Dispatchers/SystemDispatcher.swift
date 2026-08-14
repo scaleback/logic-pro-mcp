@@ -227,6 +227,58 @@ struct SystemDispatcher: OperationTraceDispatching {
         }
     }
 
+    /// Batuta fix (Fase 1): `permissions` used to return `status.summary`
+    /// (a human-readable, multi-line String) through `toolTextResult`, which
+    /// only populates `structuredContent` when the text parses as a JSON
+    /// object (see `structuredContentValue(fromToolText:)`). Since the tool
+    /// declares an `outputSchema`, an MCP client enforcing the contract
+    /// rejects a response with a promised schema but no structured content —
+    /// reproduced live: `"has an output schema but did not return
+    /// structured content"`. Mirrors `HealthResponse.PermissionsSection`
+    /// field-for-field so `permissions` and the `permissions` block inside
+    /// `health` never drift, and keeps `summary` (the human-readable
+    /// remediation lines) as an additional field instead of dropping it.
+    private struct PermissionsResponse: Encodable {
+        let accessibility: Bool
+        let automation: Bool
+        let automationGranted: Bool?
+        let accessibilityStatus: String
+        let automationStatus: String
+        let automationVerifiable: Bool
+        let automationSystemEvents: Bool
+        let automationSystemEventsStatus: String
+        let postEventAccess: Bool
+        let summary: [String]
+
+        enum CodingKeys: String, CodingKey {
+            case accessibility
+            case automation
+            case automationGranted = "automation_granted"
+            case accessibilityStatus = "accessibility_status"
+            case automationStatus = "automation_status"
+            case automationVerifiable = "automation_verifiable"
+            case automationSystemEvents = "automation_system_events"
+            case automationSystemEventsStatus = "automation_system_events_status"
+            case postEventAccess = "post_event_access"
+            case summary
+        }
+    }
+
+    /// Batuta fix (Fase 1): same root cause as `PermissionsResponse` above —
+    /// `refresh_cache` returned a plain sentence, never valid JSON, so
+    /// `structuredContent` came back nil against a declared `outputSchema`.
+    private struct RefreshCacheResponse: Encodable {
+        let triggered: Bool
+        let method: String
+        let message: String
+
+        enum CodingKeys: String, CodingKey {
+            case triggered
+            case method
+            case message
+        }
+    }
+
     static let tool = Tool(
         name: "logic_system",
         description: """
@@ -426,15 +478,35 @@ struct SystemDispatcher: OperationTraceDispatching {
 
         case "permissions":
             let status = PermissionChecker.check()
-            return toolTextResult(status.summary)
+            let response = PermissionsResponse(
+                accessibility: status.accessibility,
+                automation: status.automationLogicPro,
+                automationGranted: status.automationVerifiable ? status.automationLogicPro : nil,
+                accessibilityStatus: status.accessibilityState.rawValue,
+                automationStatus: status.automationState.rawValue,
+                automationVerifiable: status.automationVerifiable,
+                automationSystemEvents: status.automationSystemEvents,
+                automationSystemEventsStatus: status.systemEventsAutomationState.rawValue,
+                postEventAccess: status.postEventAccess,
+                summary: status.summary.split(separator: "\n").map(String.init)
+            )
+            return toolTextResult(encodeJSON(response))
 
         case "refresh_cache":
             await cache.recordToolAccess()
             if let poller {
                 await poller.refreshNow()
-                return toolTextResult("State refresh completed via AX fallback poller.")
+                return toolTextResult(encodeJSON(RefreshCacheResponse(
+                    triggered: true,
+                    method: "ax_fallback_poller",
+                    message: "State refresh completed via AX fallback poller."
+                )))
             }
-            return toolTextResult("State refresh triggered. Cache will be updated on next poll cycle.")
+            return toolTextResult(encodeJSON(RefreshCacheResponse(
+                triggered: true,
+                method: "next_poll_cycle",
+                message: "State refresh triggered. Cache will be updated on next poll cycle."
+            )))
 
         case "setup_arm_key":
             // Consent-first: refuse before the trace, the mutation gate, or any

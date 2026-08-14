@@ -57,7 +57,22 @@ let package = Package(
         .executableTarget(
             name: "LogicProMCPCLI",
             dependencies: ["LogicProMCP"],
-            path: "Sources/LogicProMCPCLI"
+            path: "Sources/LogicProMCPCLI",
+            linkerSettings: [
+                // Batuta fix (Fase 1): embebe Info.plist en el ejecutable
+                // (sección __TEXT,__info_plist) para que App Sandbox pueda
+                // resolver un CFBundleIdentifier al arrancar. Sin esto,
+                // _libsecinit_appsandbox mata el proceso con SIGTRAP en
+                // cuanto se firma con com.apple.security.app-sandbox=true —
+                // confirmado empíricamente (ver DECISION_BASE.md / commits
+                // de Fase 1). No requiere envolver el binario en un .app.
+                .unsafeFlags([
+                    "-Xlinker", "-sectcreate",
+                    "-Xlinker", "__TEXT",
+                    "-Xlinker", "__info_plist",
+                    "-Xlinker", "Sources/LogicProMCPCLI/Info.plist",
+                ]),
+            ]
         ),
         .executableTarget(
             name: "TrustedVerifier",

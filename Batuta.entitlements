@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Núcleo del Fase 1: App Sandbox encendido, SIN network.client ni
+	     network.server en ningún lado de este archivo. Esa ausencia es la
+	     garantía real ("no tiene internet" la impone macOS, no el código) —
+	     verificarla con lsof en cada build, no solo confiar en este archivo. -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+
+	<!-- Necesario para el canal AppleScript (enviar Apple Events a Logic Pro
+	     vía NSAppleScript/OSAScript). Sin esto, el sandbox bloquea Apple
+	     Events aunque el usuario ya haya concedido Automation en TCC — son
+	     dos capas independientes y ambas tienen que decir que sí. -->
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
+
+	<!-- Accessibility (AXUIElement) y CGEvent NO tienen entitlement de
+	     sandbox propio: los controla solo TCC (System Settings > Privacy).
+	     Deberían funcionar sandboxed sin nada extra aquí. A verificar
+	     empíricamente, no asumido. -->
+
+	<!-- CoreMIDI tampoco necesita entitlement de sandbox — funciona en apps
+	     sandboxed de la Mac App Store sin excepciones. A verificar igual. -->
+
+	<!-- Acceso a archivos: este binario necesita leer/escribir proyectos de
+	     Logic (.logicx) donde sea que el usuario los tenga, no solo dentro
+	     de su contenedor sandbox — más el Sound Library, temporales para
+	     SMF, y el config de Claude Desktop. Un sandbox estricto (sin nada
+	     de esto) rompería esas funciones porque el proceso quedaría
+	     encerrado en su contenedor privado.
+	     Decisión de diseño explícita para Batuta: el sandbox aquí garantiza
+	     "sin red", no "sin acceso a archivos" — restringir archivos
+	     requeriría repensar cómo el usuario apunta a sus proyectos (paneles
+	     de selección, bookmarks con alcance de seguridad) y eso es un
+	     cambio de arquitectura mayor, no algo de Fase 1. Se documenta así
+	     para no vender una garantía de aislamiento de archivos que no existe. -->
+	<key>com.apple.security.temporary-exception.files.home-relative-path.read-write</key>
+	<array>
+		<string>/</string>
+	</array>
+</dict>
+</plist>

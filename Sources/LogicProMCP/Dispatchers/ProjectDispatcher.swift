@@ -452,8 +452,15 @@ struct ProjectDispatcher: OperationTraceDispatching {
             let traceID = await startTraceIfEnabled(command: command)
             if isLogicProRunning() {
                 audit(command, phase: .rejected, reason: "already running")
+                // Batuta fix (Fase 1): a plain string never populates
+                // structuredContent (see structuredContentValue(fromToolText:)),
+                // and this tool's outputSchema requires it — same bug class as
+                // the logic_system.permissions/refresh_cache fix.
                 return await finalizeTrace(
-                    toolTextResult("Logic Pro is already running"),
+                    toolTextResult(HonestContract.jsonString([
+                        "status": "already_running",
+                        "message": "Logic Pro is already running",
+                    ])),
                     traceID: traceID
                 )
             }
@@ -482,8 +489,12 @@ struct ProjectDispatcher: OperationTraceDispatching {
             }
             if !isLogicProRunning() {
                 audit(command, phase: .rejected, reason: "not running")
+                // Batuta fix (Fase 1): same schema-envelope fix as "launch" above.
                 return await finalizeTrace(
-                    toolTextResult("Logic Pro is not running"),
+                    toolTextResult(HonestContract.jsonString([
+                        "status": "not_running",
+                        "message": "Logic Pro is not running",
+                    ])),
                     traceID: traceID
                 )
             }
