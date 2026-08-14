@@ -319,6 +319,7 @@ extension OperationTraceDispatching {
             )
             await OperationTraceStore.shared.record(traceID, phase: .resultEmitted)
             await OperationTraceStore.shared.complete(traceID)
+            await recordPersistentAuditLine(traceID, isError: result.isError == true)
             return result
         }
 
@@ -337,6 +338,7 @@ extension OperationTraceDispatching {
         )
         await OperationTraceStore.shared.record(traceID, phase: .resultEmitted)
         await OperationTraceStore.shared.complete(traceID)
+        await recordPersistentAuditLine(traceID, isError: result.isError == true)
 
         let merged = HonestContract.addExtras(["trace_id": traceID.rawValue], into: raw)
         guard merged != raw else { return result }
@@ -353,5 +355,19 @@ extension OperationTraceDispatching {
             isError: result.isError,
             _meta: result._meta
         )
+    }
+
+    /// Batuta (Fase 1): persist the just-completed trace to the durable
+    /// operations log. Called after `OperationTraceStore.shared.complete`,
+    /// so `.trace(traceID)` returns the full event list (channels attempted,
+    /// which one succeeded, final readback state) for
+    /// `PersistentOperationLog` to summarize into one line. A trace evicted
+    /// under memory pressure between `complete` and here (the store caps
+    /// both count and bytes) simply has nothing to persist — the durable log
+    /// losing an entry under extreme churn is an acceptable gap; the trace
+    /// store's byte budget is not renegotiated to keep it from happening.
+    private static func recordPersistentAuditLine(_ traceID: TraceID, isError: Bool) async {
+        guard let trace = await OperationTraceStore.shared.trace(traceID) else { return }
+        await PersistentOperationLog.record(trace, isError: isError)
     }
 }
