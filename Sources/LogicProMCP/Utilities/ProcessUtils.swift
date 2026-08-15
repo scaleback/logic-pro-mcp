@@ -217,6 +217,52 @@ enum ProcessUtils {
         }
     }
 
+    /// Batuta (Fase 2): AX-free heuristic for "there's probably a dialog or
+    /// sheet on top of Logic's main window". Uses CGWindowListCopyWindowInfo
+    /// — no Accessibility, no Screen Recording, no extra permission of any
+    /// kind (same primitive `hasVisibleWindow()` above already uses).
+    ///
+    /// Empirically verified (2026-08-15, live against Logic Pro 12.3): the
+    /// main editor window is always `CGWindowLayer 0`. Opening a real modal
+    /// sheet (tested with File > Save As…) adds a SECOND on-screen window at
+    /// a non-zero layer (observed layer 8, 1042x829). Small transient
+    /// overlays — a menu-highlight remnant, a tooltip — can also appear at a
+    /// non-zero layer (observed layer 103, 73x18px) without being an actual
+    /// blocking dialog, so a minimum size excludes those; real dialogs/sheets
+    /// are comfortably larger than any observed false-positive candidate.
+    ///
+    /// This is deliberately less precise than the AX path
+    /// (`AXLogicProElements.dialogPresent`): it cannot read a title, role, or
+    /// button set, so it cannot identify WHICH dialog is present or hand back
+    /// enough identity to dismiss one — only that a blocking one probably is.
+    /// That is the correct tradeoff for its one caller: a core-ring op
+    /// running without Accessibility that needs to decide refuse-vs-proceed,
+    /// not enumerate what to click. Callers that already have AX should keep
+    /// using the precise path; this exists only for when AX is unavailable
+    /// and the alternative is failing closed on every call.
+    static func probableDialogPresentViaCGWindowList() -> Bool {
+        guard let pid = logicProPID() else { return false }
+        guard let windowList = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID
+        ) as? [[String: Any]] else {
+            return false
+        }
+        return windowList.contains { info in
+            guard let ownerPID = pidValue(from: info[kCGWindowOwnerPID as String]),
+                  ownerPID == pid,
+                  let layer = info[kCGWindowLayer as String] as? Int,
+                  layer != 0,
+                  let bounds = info[kCGWindowBounds as String] as? [String: Any],
+                  let width = (bounds["Width"] as? NSNumber)?.doubleValue,
+                  let height = (bounds["Height"] as? NSNumber)?.doubleValue,
+                  width >= 150, height >= 80
+            else {
+                return false
+            }
+            return true
+        }
+    }
+
     /// Bring Logic Pro to front (used sparingly — most operations don't need focus).
     static func activateLogicPro() -> Bool {
         activateLogicPro(runtime: .production)

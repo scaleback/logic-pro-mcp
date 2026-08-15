@@ -94,7 +94,26 @@ enum AXLogicProElements {
         guard let app = appRoot(runtime: runtime) else { return false }
         guard let windows: [AXUIElement] = AXHelpers.getAttribute(
             app, kAXWindowsAttribute, runtime: runtime.ax
-        ) else { return true }
+        ) else {
+            // Batuta (Fase 2): this used to be `return true` — fail closed by
+            // ASSUMING a dialog whenever AX can't be read, which in practice
+            // meant "no Accessibility ⇒ every dialog-guarded op refuses,
+            // forever" (confirmed live: transport.play refused unconditionally
+            // running with Accessibility untrusted). That default made the
+            // core-ring goal — operate without Accessibility — unreachable
+            // for anything gated by this check, independent of whether the
+            // channel doing the actual write needed AX at all.
+            //
+            // Falling back to the CGWindowList heuristic (no permission
+            // needed, see ProcessUtils.probableDialogPresentViaCGWindowList)
+            // refuses only when there's real on-screen evidence of an extra
+            // window, instead of refusing unconditionally. It is less
+            // precise than AX — no title/role, so a caller that wants to
+            // identify or dismiss the specific dialog still needs AX — but
+            // for the refuse-vs-proceed decision this function answers, it
+            // is real evidence, not a permission-shaped guess.
+            return ProcessUtils.probableDialogPresentViaCGWindowList()
+        }
         return windows.contains { isBlockingDialogWindow($0, runtime: runtime.ax) }
     }
 
