@@ -226,7 +226,11 @@ actor MCUChannel: Channel {
             conn.isConnected = false
             conn.registeredAsDevice = false
             conn.lastFeedbackAt = nil
-            conn.portName = "LogicProMCP-MCU-Internal"
+            // Batuta: mirror the same env override LogicProServer's
+            // transport uses, so health reporting names the port this
+            // process actually opened, not always the production default.
+            conn.portName = ProcessInfo.processInfo.environment["LOGIC_MCP_MCU_PORT_NAME"]
+                ?? "LogicProMCP-MCU-Internal"
         }
 
         Log.info("MCU Channel started, handshake query sent; waiting for feedback", subsystem: "mcu")

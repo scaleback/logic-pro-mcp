@@ -1425,7 +1425,15 @@ actor ProductionMCUTransport: MCUTransportProtocol {
         // it must dereference whatever sink is current at delivery time.
         let sink = feedbackSink
         do {
-            port = try await portManager.createBidirectionalPort(name: "LogicProMCP-MCU-Internal") { eventList, _ in
+            // Batuta (Fase 2 experiment): overridable via env var so a test
+            // build can run its own MCU control surface side-by-side with a
+            // production LogicProMCP instance without the two fighting over
+            // the same CoreMIDI port name / the same Control Surfaces Setup
+            // entry in Logic. Defaults to the production name — unset, this
+            // is a no-op.
+            let mcuPortName = ProcessInfo.processInfo.environment["LOGIC_MCP_MCU_PORT_NAME"]
+                ?? "LogicProMCP-MCU-Internal"
+            port = try await portManager.createBidirectionalPort(name: mcuPortName) { eventList, _ in
                 // Parse UMP event list → MIDI 1.0 bytes → MIDIFeedback.Event
                 // Use original eventList pointer (not a stack copy) for safe traversal
                 let numPackets = Int(eventList.pointee.numPackets)

@@ -122,8 +122,23 @@ actor ChannelRouter {
     /// Route an operation through its fallback chain.
     /// Returns the result from the first channel that succeeds.
     func route(operation: String, params: [String: String] = [:]) async -> ChannelResult {
-        guard let chain = Self.routingTable[operation] else {
+        guard var chain = Self.routingTable[operation] else {
             return .error("Unknown operation: \(operation)")
+        }
+
+        // Batuta (Fase 2 experiment, temporary — not a shipped feature):
+        // isolate whether MCU alone, with zero fallback, can actually carry
+        // an operation. Every routing-table chain today lists Accessibility
+        // (or CGEvent) before MCU, so MCU is never really exercised as long
+        // as those stay healthy — a real test needs the fallback removed,
+        // not just reordered, or a pass could still be silently Accessibility
+        // underneath. `LOGIC_MCP_FORCE_MCU_ONLY=1` collapses the chain to
+        // `[.mcu]` for every operation that has MCU in its normal chain;
+        // operations with no MCU route at all (e.g. mixer.set_volume today)
+        // are left untouched — there is nothing to force.
+        if ProcessInfo.processInfo.environment["LOGIC_MCP_FORCE_MCU_ONLY"] == "1",
+           chain.contains(.mcu) {
+            chain = [.mcu]
         }
 
         // Operations with empty chain don't need a channel
