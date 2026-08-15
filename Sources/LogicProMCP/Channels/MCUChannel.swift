@@ -369,6 +369,22 @@ actor MCUChannel: Channel {
         let timeoutMs = Self.echoTimeoutMs
 
         return await withBanking(targetTrack: track) { strip in
+            // Batuta (Fase 2): `withBanking` only resolves which BANK is
+            // active (targetTrack / 8) and which strip offset (0..7) within
+            // it — it does NOT select/focus that specific channel strip.
+            // Confirmed empirically (2026-08-15, live against Logic Pro
+            // 12.3): a host-originated fader write to an unselected strip is
+            // silently accepted by Logic (no error, LCD preview updates) but
+            // never actually applied to the real channel — only after
+            // sending `select` for that strip first does the write land.
+            // This is the missing piece that made mixer.set_volume AX-only
+            // in the first place (see the routing-table comment this
+            // unblocks in RoutingTable.swift). One extra fire-and-forget
+            // select press, same as the strip-button select path below —
+            // cheap, and this is the SAME select `executeAutomation` already
+            // sends before writing an automation mode, for the identical
+            // reason.
+            await self.transport.send(MCUProtocol.encodeButton(.select, strip: strip, on: true))
             // v3.1.0 (Ralph-2 / C1) — stamp the send moment *before* the
             // write so pollFaderEcho can reject stale cache values that
             // pre-date this call. Without the stamp, an identical-value
@@ -431,6 +447,9 @@ actor MCUChannel: Channel {
         let timeoutMs = Self.echoTimeoutMs
 
         return await withBanking(targetTrack: track) { strip in
+            // Batuta (Fase 2): same missing-selection fix as executeSetVolume
+            // above — see that comment for the empirical evidence.
+            await self.transport.send(MCUProtocol.encodeButton(.select, strip: strip, on: true))
             // v3.1.3 (#1) — stamp the send moment *before* the write so
             // pollPanEcho can reject stale cache values that pre-date this
             // call. Same anti-stale guard as set_volume's Ralph-2 / C1 fix.

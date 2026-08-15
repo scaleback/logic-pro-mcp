@@ -79,13 +79,19 @@ extension ChannelRouter {
         "library.scan_all":           [.accessibility],
         "library.resolve_path":       [.accessibility],
 
-        // Mixer — public volume/pan writes are AX-only so the wire can carry
-        // visible-strip identity plus same-surface readback. MCU echo remains
-        // useful internally, but it cannot prove the targeted strip when the
-        // visible mixer path is unavailable.
+        // Mixer — AX stays primary (verified same-surface readback, and the
+        // existing trusted path when it works). Batuta (Fase 2) adds `.mcu`
+        // as a real fallback, not just an echo source: `executeSetVolume`/
+        // `executeSetPan` now select the target strip via MCU before writing
+        // (see MCUChannel.swift), which was the missing piece that made a
+        // bare MCU write land nowhere without AX to fall back on. This is
+        // what makes mixing survive AX being unavailable — required for the
+        // core-ring goal — and also covers the live, filed AX bug where
+        // set_volume/set_pan fail closed with `element_not_found` even with
+        // Accessibility granted (upstream MongLong0214#543).
         "mixer.get_state":            [.mcu, .accessibility],
-        "mixer.set_volume":           [.accessibility],
-        "mixer.set_pan":              [.accessibility],
+        "mixer.set_volume":           [.accessibility, .mcu],
+        "mixer.set_pan":              [.accessibility, .mcu],
         "mixer.set_send":             [.mcu],
         "mixer.set_output":           [.accessibility],
         "mixer.set_input":            [.accessibility],
