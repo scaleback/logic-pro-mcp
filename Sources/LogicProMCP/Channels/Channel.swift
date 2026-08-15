@@ -1,7 +1,7 @@
 import Foundation
 
 /// Result of a channel operation.
-enum ChannelResult: Sendable {
+package enum ChannelResult: Sendable {
     case success(String)
     case error(String)
 
@@ -100,6 +100,27 @@ protocol Channel: Actor {
 protocol KeyCmdCCChannel: Channel {
     nonisolated var transport: any KeyCmdTransportProtocol { get }
     nonisolated var approvalStore: any ManualValidationStoring { get }
+}
+
+/// Batuta (Fase 3): whatever sits at `LogicProServer.axChannel` /
+/// `StatePoller.axChannel` — either the in-process `AccessibilityChannel`
+/// (unsandboxed builds, tests) or `AXHelperProxyChannel` (the sandboxed
+/// production shape, forwarding to the unsandboxed helper process). Every
+/// caller everywhere else already goes through plain `Channel.execute()`;
+/// `readTrackStates()` is the one exception — `StatePoller` calls it
+/// directly as a typed fast path instead of round-tripping through
+/// `execute()` + string params for its poll loop. Declared `async` (even
+/// though `AccessibilityChannel`'s own implementation is synchronous) so
+/// this is callable via `await` on either concrete actor from outside it —
+/// a synchronous witness satisfies an `async` requirement trivially.
+/// `AXHelperProxyChannel.readTrackStates()` returns `nil`: it has no local
+/// AX runtime to read (the real one lives in the helper process across the
+/// pipe), and `StatePoller.pollOnce()` already has a correct, existing
+/// fallback for a `nil` result — it falls through to
+/// `poll(operation: "track.get_tracks", ...)`, which only ever needs the
+/// standard `Channel.execute()` interface both types already implement.
+protocol AccessibilityChannelProtocol: Channel {
+    func readTrackStates() async -> [TrackState]?
 }
 
 extension KeyCmdCCChannel {

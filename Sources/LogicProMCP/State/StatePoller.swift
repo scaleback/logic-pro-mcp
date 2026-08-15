@@ -82,14 +82,14 @@ actor StatePoller {
     }
 
     // Note: Kept as "StatePoller" for backward compatibility with LogicProServer.
-    private let axChannel: AccessibilityChannel
+    private let axChannel: any AccessibilityChannelProtocol
     private let cache: StateCache
     private let runtime: Runtime
     private let postPoll: @Sendable ([ResourceCacheKey]) async -> Void
     private var pollingTask: Task<Void, Never>?
 
     init(
-        axChannel: AccessibilityChannel,
+        axChannel: any AccessibilityChannelProtocol,
         cache: StateCache,
         runtime: Runtime = .production,
         postPoll: @escaping @Sendable ([ResourceCacheKey]) async -> Void = { _ in }
@@ -140,7 +140,7 @@ actor StatePoller {
         await pollOnce(axChannel: axChannel, cache: cache)
     }
 
-    private func pollLoop(axChannel: AccessibilityChannel, cache: StateCache) async {
+    private func pollLoop(axChannel: any AccessibilityChannelProtocol, cache: StateCache) async {
         let intervalNs = ServerConfig.statePollingIntervalNs
 
         while !Task.isCancelled {
@@ -159,7 +159,7 @@ actor StatePoller {
         Log.info("AX Supplementary Poller loop exited", subsystem: "poller")
     }
 
-    private func pollOnce(axChannel: AccessibilityChannel, cache: StateCache) async {
+    private func pollOnce(axChannel: any AccessibilityChannelProtocol, cache: StateCache) async {
         var cacheKeys: [ResourceCacheKey] = []
         guard runtime.hasVisibleWindow() else {
             // Be conservative: a single missed window check is often a transient
@@ -321,7 +321,7 @@ actor StatePoller {
         operation: String,
         label: String,
         section: CacheSectionID,
-        axChannel: AccessibilityChannel,
+        axChannel: any AccessibilityChannelProtocol,
         cache: StateCache,
         as type: T.Type,
         update: (StateCache, T, StateCache.SectionVersion) async -> Bool
@@ -354,7 +354,7 @@ actor StatePoller {
     private func pollUnversioned<T: Decodable & Sendable>(
         operation: String,
         label: String,
-        axChannel: AccessibilityChannel,
+        axChannel: any AccessibilityChannelProtocol,
         cache: StateCache,
         as type: T.Type,
         update: (StateCache, T) async -> Void

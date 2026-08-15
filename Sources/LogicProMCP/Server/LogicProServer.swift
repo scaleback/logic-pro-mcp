@@ -283,7 +283,7 @@ actor LogicProServer {
     private let mcuChannel: MCUChannel
     private let keyCommandsChannel: MIDIKeyCommandsChannel
     private let scripterChannel: ScripterChannel
-    private let axChannel: AccessibilityChannel
+    private let axChannel: any AccessibilityChannelProtocol
     private let cgEventChannel: CGEventChannel
     private let appleScriptChannel: AppleScriptChannel
     private let runtimeOverrides: LogicProServerRuntimeOverrides?
@@ -298,7 +298,15 @@ actor LogicProServer {
         runtimeOverrides: LogicProServerRuntimeOverrides? = nil,
         pollerRuntime: StatePoller.Runtime = .production,
         sagaJournal: SagaJournal = SagaJournal(),
-        mutationGate: LogicMutationGate? = nil
+        mutationGate: LogicMutationGate? = nil,
+        // Batuta (Fase 3): defaults to the in-process channel so every
+        // existing caller (all tests, and this default itself) is
+        // byte-for-byte unchanged. The real switch to the unsandboxed-helper
+        // architecture (AXHelperProxyChannel) happens explicitly at the two
+        // production entry points (LogicProMCPMain.swift,
+        // MainEntrypoint.swift), not here — this default is deliberately
+        // the safe, already-verified behavior.
+        axChannel: any AccessibilityChannelProtocol = AccessibilityChannel()
     ) {
         let server = Server(
             name: ServerConfig.serverName,
@@ -332,7 +340,7 @@ actor LogicProServer {
         // Legacy channels
         let midiEngine = MIDIEngine()
         self.coreMIDIChannel = CoreMIDIChannel(engine: midiEngine, portManager: portManager)
-        self.axChannel = AccessibilityChannel()
+        self.axChannel = axChannel
         self.cgEventChannel = CGEventChannel()
         self.appleScriptChannel = AppleScriptChannel()
 

@@ -7,6 +7,10 @@ let package = Package(
     products: [
         .executable(name: "LogicProMCP", targets: ["LogicProMCPCLI"]),
         .executable(name: "trusted-verifier", targets: ["TrustedVerifier"]),
+        // Batuta (Fase 3): the Accessibility channel, running unsandboxed —
+        // see Sources/LogicProMCPAXHelper/main.swift and
+        // Sources/LogicProMCP/Channels/AXHelperProxyChannel.swift.
+        .executable(name: "LogicProMCPAXHelper", targets: ["LogicProMCPAXHelper"]),
     ],
     dependencies: [
         // swift-sdk 0.11.0+ adopts the short-form
@@ -78,6 +82,17 @@ let package = Package(
             name: "TrustedVerifier",
             dependencies: ["LogicProMCP"],
             path: "Sources/TrustedVerifier"
+        ),
+        // Batuta (Fase 3): deliberately NO sandbox entitlement, no
+        // Info.plist/CFBundleIdentifier embed (that trick exists only to
+        // stop _libsecinit_appsandbox from crashing a SANDBOXED bare
+        // executable — irrelevant here since this one is never sandboxed).
+        // See Sources/LogicProMCPAXHelper/main.swift for what this is and
+        // why it exists.
+        .executableTarget(
+            name: "LogicProMCPAXHelper",
+            dependencies: ["LogicProMCP"],
+            path: "Sources/LogicProMCPAXHelper"
         ),
         .testTarget(
             name: "LogicProMCPTests",

@@ -5,7 +5,7 @@ import Foundation
 /// Channel that reads and mutates Logic Pro state via the macOS Accessibility API.
 /// Primary channel for state queries (transport, tracks, mixer) and UI mutations
 /// (clicking mute/solo buttons, reading fader values, etc.)
-actor AccessibilityChannel: Channel {
+package actor AccessibilityChannel: AccessibilityChannelProtocol {
     let id: ChannelID = .accessibility
     private let runtime: Runtime
 
@@ -81,7 +81,7 @@ actor AccessibilityChannel: Channel {
         return requestedURL.path
     }
 
-    struct Runtime: @unchecked Sendable {
+    package struct Runtime: @unchecked Sendable {
         let isTrusted: @Sendable () -> Bool
         let isLogicProRunning: @Sendable () -> Bool
         let hasVisibleWindow: @Sendable () -> Bool
@@ -279,7 +279,7 @@ actor AccessibilityChannel: Channel {
         static let production = Runtime.axBacked()
     }
 
-    init(runtime: Runtime = .production) {
+    package init(runtime: Runtime = .production) {
         self.runtime = runtime
     }
 
@@ -287,7 +287,12 @@ actor AccessibilityChannel: Channel {
         runtime.trackStates()
     }
 
-    func start() async throws {
+    // `package` on start()/stop()/execute(): LogicProMCPAXHelper (a separate,
+    // unsandboxed executable target — Batuta Fase 3) drives this channel
+    // directly, not through the `Channel` protocol, so these three need
+    // cross-module (but package-internal, not public) visibility. See
+    // Sources/LogicProMCPAXHelper/main.swift.
+    package func start() async throws {
         // Verify AX trust. If not trusted, the process needs to be added to
         // System Preferences > Privacy & Security > Accessibility.
         let trusted = runtime.isTrusted()
@@ -301,11 +306,11 @@ actor AccessibilityChannel: Channel {
         Log.info("Accessibility channel started", subsystem: "ax")
     }
 
-    func stop() async {
+    package func stop() async {
         Log.info("Accessibility channel stopped", subsystem: "ax")
     }
 
-    func execute(operation: String, params: [String: String]) async -> ChannelResult {
+    package func execute(operation: String, params: [String: String]) async -> ChannelResult {
         guard runtime.isLogicProRunning() else {
             return .error("Logic Pro is not running")
         }
