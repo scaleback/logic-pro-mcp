@@ -578,13 +578,25 @@ actor AccessibilityChannel: Channel {
         case "mixer.set_pan":
             return runtime.setMixerValue(params, .pan)
         case "mixer.set_send":
-            return .error("Send adjustment not yet implemented via AX")
+            return .error(HonestContract.encodeStateC(
+                error: .notImplemented,
+                hint: "Send adjustment not yet implemented via AX."
+            ))
         case "mixer.set_input", "mixer.set_output":
-            return .error("I/O routing not yet implemented via AX")
+            return .error(HonestContract.encodeStateC(
+                error: .notImplemented,
+                hint: "I/O routing not yet implemented via AX."
+            ))
         case "mixer.toggle_eq":
-            return .error("EQ toggle not yet implemented via AX")
+            return .error(HonestContract.encodeStateC(
+                error: .notImplemented,
+                hint: "EQ toggle not yet implemented via AX."
+            ))
         case "mixer.reset_strip":
-            return .error("Strip reset not yet implemented via AX")
+            return .error(HonestContract.encodeStateC(
+                error: .notImplemented,
+                hint: "Strip reset not yet implemented via AX."
+            ))
 
         // MARK: - MIDI file import (AX menu navigation)
         case "midi.import_file":
@@ -659,7 +671,10 @@ actor AccessibilityChannel: Channel {
         case "region.select_last":
             return await AccessibilityChannel.defaultSelectLastRegion(runtime: runtime.logicRuntime)
         case "region.select", "region.loop", "region.set_name", "region.move", "region.resize":
-            return .error("Region operations not yet implemented via AX")
+            return .error(HonestContract.encodeStateC(
+                error: .notImplemented,
+                hint: "Region operations not yet implemented via AX."
+            ))
 
         // MARK: - Plugins
         case "plugin.insert":
@@ -667,7 +682,10 @@ actor AccessibilityChannel: Channel {
         // plugin.bypass / plugin.remove are still intentionally absent from
         // the public contract; no verified AX readback path exists for them.
         case "plugin.list":
-            return .error("Plugin list reading not yet implemented via AX")
+            return .error(HonestContract.encodeStateC(
+                error: .notImplemented,
+                hint: "Plugin list reading not yet implemented via AX."
+            ))
 
         // MARK: - Verified plugin surface (logic_plugins.*)
         // Drift-safe inventory and verified live plugin writes. These route
@@ -682,9 +700,15 @@ actor AccessibilityChannel: Channel {
 
         // MARK: - Automation
         case "automation.get_mode":
-            return .error("Automation mode reading not yet implemented via AX")
+            return .error(HonestContract.encodeStateC(
+                error: .notImplemented,
+                hint: "Automation mode reading not yet implemented via AX."
+            ))
         case "automation.set_mode":
-            return .error("Automation mode setting not yet implemented via AX")
+            return .error(HonestContract.encodeStateC(
+                error: .notImplemented,
+                hint: "Automation mode setting not yet implemented via AX."
+            ))
 
         default:
             return .error("Unsupported AX operation: \(operation)")
