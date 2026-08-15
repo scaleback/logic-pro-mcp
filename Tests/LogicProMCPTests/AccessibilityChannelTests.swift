@@ -863,14 +863,30 @@ private func makeSetInstrumentFixture() -> (
         // v3.1.2 P2-1: track.set_color now returns a State C envelope with
         // `error:"not_implemented"` instead of a plain free-form string.
         ("track.set_color", "\"error\":\"not_implemented\""),
+        // Batuta (Fase 3): these six now come back as HonestContract State C
+        // envelopes (task #24 — "not yet implemented via AX" was previously a
+        // plain string that HonestContract.isTerminalStateC couldn't
+        // recognize, so the router treated "never built" as retryable). The
+        // JSON serializer escapes '/', so "I/O" renders as "I\/O" — match on
+        // "\"error\":\"not_implemented\"" plus a slash-free fragment of the
+        // hint instead of the raw prose to stay correct regardless of escaping.
+        ("mixer.set_send", "\"error\":\"not_implemented\""),
         ("mixer.set_send", "Send adjustment not yet implemented via AX"),
-        ("mixer.set_input", "I/O routing not yet implemented via AX"),
-        ("mixer.set_output", "I/O routing not yet implemented via AX"),
+        ("mixer.set_input", "\"error\":\"not_implemented\""),
+        ("mixer.set_input", "routing not yet implemented via AX"),
+        ("mixer.set_output", "\"error\":\"not_implemented\""),
+        ("mixer.set_output", "routing not yet implemented via AX"),
+        ("mixer.toggle_eq", "\"error\":\"not_implemented\""),
         ("mixer.toggle_eq", "EQ toggle not yet implemented via AX"),
+        ("mixer.reset_strip", "\"error\":\"not_implemented\""),
         ("mixer.reset_strip", "Strip reset not yet implemented via AX"),
+        ("region.select", "\"error\":\"not_implemented\""),
         ("region.select", "Region operations not yet implemented via AX"),
+        ("plugin.list", "\"error\":\"not_implemented\""),
         ("plugin.list", "Plugin list reading not yet implemented via AX"),
+        ("automation.get_mode", "\"error\":\"not_implemented\""),
         ("automation.get_mode", "Automation mode reading not yet implemented via AX"),
+        ("automation.set_mode", "\"error\":\"not_implemented\""),
         ("automation.set_mode", "Automation mode setting not yet implemented via AX"),
         ("unknown.operation", "Unsupported AX operation"),
     ]

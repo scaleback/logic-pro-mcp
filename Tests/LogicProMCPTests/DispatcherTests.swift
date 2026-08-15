@@ -3939,6 +3939,18 @@ private actor TransportStateSequenceChannel: Channel {
 }
 
 @Test func testTransportDispatcherStopPromotesFallbackWriteToVerifiedReadback() async {
+    // Batuta (Fase 2): transport.stop's routing chain was reordered to put
+    // .mcu first (RoutingTable.swift, "MCU primero para play/stop/record").
+    // This test used to simulate AX itself returning a State C on the write
+    // (readbackMismatch) and falling through to MCU, whose bare success then
+    // got promoted to a verified State A by this dispatcher's own post-write
+    // polling. With MCU first, MCU now wins the write outright (a real
+    // MCUChannel always returns State B readback_unavailable — MockChannel's
+    // unconditional success stands in for that here) — .accessibility is
+    // never asked to write transport.stop at all anymore, only to serve the
+    // before/after transport.get_state reads used for the polling promotion.
+    // The promotion behaviour under test (unverified write -> verified read)
+    // is unchanged; only which channel supplies the write moved.
     let router = ChannelRouter()
     let ax = TransportStateSequenceChannel(
         id: .accessibility,
@@ -3954,12 +3966,7 @@ private actor TransportStateSequenceChannel: Channel {
                 position: "9.1.1.1"
             )
         ],
-        mutationResults: [
-            "transport.stop": .error(HonestContract.encodeStateC(
-                error: .readbackMismatch,
-                hint: "play checkbox did not clear on first AX attempt"
-            ))
-        ]
+        mutationResults: [:]
     )
     let mcu = MockChannel(id: .mcu)
     await router.register(ax)
@@ -3981,7 +3988,7 @@ private actor TransportStateSequenceChannel: Channel {
     #expect(!((json["observed_isPlaying"] as? Bool)!))
     #expect(!((json["observed_isRecording"] as? Bool)!))
     #expect(json["observed_position"] as? String == "9.1.1.1")
-    #expect(await ax.executedOps.map(\.0) == ["transport.get_state", "transport.stop", "transport.get_state"])
+    #expect(await ax.executedOps.map(\.0) == ["transport.get_state", "transport.get_state"])
     #expect(await mcu.executedOps.map(\.0) == ["transport.stop"])
 
     let cached = await cache.getTransport()

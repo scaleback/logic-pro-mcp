@@ -171,8 +171,11 @@ import Foundation
 }
 
 @Test func testDegradedModeNoAXPermission() async {
-    // When AX channel is unavailable, mixer writes now fail closed while
-    // unrelated KeyCmd surfaces continue to work.
+    // Batuta (Fase 2): mixer.set_volume/set_pan gained an .mcu fallback
+    // ("mixer.set_volume/set_pan funcionan sin Accessibility") — this is the
+    // whole point of the core-ring work, so a mixer write with AX unavailable
+    // now correctly falls through to MCU and succeeds instead of failing
+    // closed. KeyCmd surfaces are unaffected either way.
     let router = ChannelRouter()
     let ax = MockChannel(id: .accessibility, available: false)
     let mcu = MockChannel(id: .mcu)
@@ -181,10 +184,11 @@ import Foundation
     await router.register(mcu)
     await router.register(keyCmd)
 
-    // Mixer write should fail closed because public volume writes now require
-    // AX strip-local verification.
+    // Mixer write falls through AX (unavailable) to the MCU fallback and
+    // succeeds — this is the intended Fase 2 core-ring behavior, not a
+    // fail-closed gap.
     let mixResult = await router.route(operation: "mixer.set_volume")
-    #expect(!mixResult.isSuccess)
+    #expect(mixResult.isSuccess)
 
     // Edit (KeyCmd) should work
     let editResult = await router.route(operation: "edit.undo")

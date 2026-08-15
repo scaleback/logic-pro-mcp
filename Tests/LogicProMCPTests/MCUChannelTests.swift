@@ -134,27 +134,33 @@ import Testing
 }
 
 @Test func testMCUChannelTransportCommandsEmitExpectedBytes() async {
+    // Batuta (Fase 2): sendTransport now sends press THEN release (a real
+    // MCU controller does both, and Logic's own echo confirmed it expects
+    // both — see MCUChannel.sendTransport). Each command therefore emits
+    // TWO messages, not one: press (velocity 127) followed by release
+    // (velocity 0). This test used to only check the single press byte.
     let transport = MockMCUTransport()
     let channel = MCUChannel(transport: transport, cache: StateCache())
 
-    let cases: [(String, [UInt8])] = [
-        ("transport.play", MCUProtocol.encodeTransport(.play)),
-        ("transport.stop", MCUProtocol.encodeTransport(.stop)),
-        ("transport.record", MCUProtocol.encodeTransport(.record)),
-        ("transport.rewind", MCUProtocol.encodeTransport(.rewind)),
-        ("transport.fast_forward", MCUProtocol.encodeTransport(.fastForward)),
-        ("transport.toggle_cycle", MCUProtocol.encodeTransport(.cycle)),
+    let cases: [(String, press: [UInt8], release: [UInt8])] = [
+        ("transport.play", MCUProtocol.encodeTransport(.play), MCUProtocol.encodeTransportRelease(.play)),
+        ("transport.stop", MCUProtocol.encodeTransport(.stop), MCUProtocol.encodeTransportRelease(.stop)),
+        ("transport.record", MCUProtocol.encodeTransport(.record), MCUProtocol.encodeTransportRelease(.record)),
+        ("transport.rewind", MCUProtocol.encodeTransport(.rewind), MCUProtocol.encodeTransportRelease(.rewind)),
+        ("transport.fast_forward", MCUProtocol.encodeTransport(.fastForward), MCUProtocol.encodeTransportRelease(.fastForward)),
+        ("transport.toggle_cycle", MCUProtocol.encodeTransport(.cycle), MCUProtocol.encodeTransportRelease(.cycle)),
     ]
 
-    for (operation, expected) in cases {
+    for (operation, press, release) in cases {
         let result = await channel.execute(operation: operation, params: [:])
         #expect(result.isSuccess)
         let sent = await transport.sentBytes
-        #expect(sent.last == expected)
+        #expect(sent.dropLast().last == press)
+        #expect(sent.last == release)
     }
 
     let sent = await transport.sentBytes
-    #expect(sent == cases.map { $0.1 })
+    #expect(sent == cases.flatMap { [$0.press, $0.release] })
 }
 
 @Test func testMCUChannelPanMasterAndStripButtonCommands() async {
