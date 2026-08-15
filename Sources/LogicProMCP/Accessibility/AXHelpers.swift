@@ -98,6 +98,27 @@ enum AXHelpers {
         runtime.attributeValue(element, attribute) as? T
     }
 
+    /// Get an attribute whose value is an array of `AXUIElement` (e.g.
+    /// `kAXWindowsAttribute`, `kAXSelectedChildrenAttribute`).
+    ///
+    /// Found 2026-08-15 debugging `mainWindow()` returning nil live with
+    /// Accessibility genuinely trusted: `getAttribute<[AXUIElement]>` casts
+    /// via a plain `as? [AXUIElement]`, but `AXUIElement` is not a
+    /// toll-free-bridged CFType, so that cast is unreliable and was silently
+    /// returning nil for `kAXWindowsAttribute` — exactly the failure mode
+    /// `decodeChildrenArray` already existed to work around for
+    /// `kAXChildrenAttribute`. `mainWindow()` and `dialogPresent()` were the
+    /// two callers still doing the naive cast directly instead of going
+    /// through that decoder. This generalizes `decodeChildrenArray`'s
+    /// manual `CFArray`/`unsafeBitCast` walk to any AXUIElement-array
+    /// attribute, not just children.
+    static func getElementArrayAttribute(
+        _ element: AXUIElement, _ attribute: String, runtime: Runtime = .production
+    ) -> [AXUIElement] {
+        guard let value = runtime.attributeValue(element, attribute) else { return [] }
+        return decodeChildrenArray(value)
+    }
+
     /// Get a typed attribute value without collapsing an AX read failure into `nil`.
     ///
     /// The optional success value still represents an absent or mismatched value. Callers that

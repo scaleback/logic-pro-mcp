@@ -60,9 +60,23 @@ enum AXLogicProElements {
 
         // Step 1 — enumerate all windows (test doubles may not implement this;
         // falls back to legacy mainWindow for those).
-        let windows: [AXUIElement] = AXHelpers.getAttribute(
+        //
+        // 2026-08-15: getElementArrayAttribute, not getAttribute — see its
+        // doc comment in AXHelpers.swift. The naive `as? [AXUIElement]` cast
+        // that used to be here is unreliable for kAXWindowsAttribute
+        // (AXUIElement isn't toll-free-bridged) and is worth fixing on its
+        // own merits, but it turned out NOT to be why mainWindow() was
+        // returning nil live with Accessibility genuinely trusted and
+        // Logic's window normal and frontmost — kAXWindowsAttribute itself
+        // fails at the raw AXUIElementCopyAttributeValue call with
+        // -25204 (kAXErrorCannotComplete), instantly (not a
+        // AXUIElementSetMessagingTimeout(2.5) timeout — raising it to 6.0s
+        // made no difference, and the failure was immediate, not delayed).
+        // Root cause NOT found; see HANDOFF.md for the full investigation
+        // and the leading unconfirmed hypothesis (window/Space affinity).
+        let windows: [AXUIElement] = AXHelpers.getElementArrayAttribute(
             app, kAXWindowsAttribute, runtime: runtime.ax
-        ) ?? []
+        )
         guard !windows.isEmpty else {
             return AXHelpers.getAttribute(app, kAXMainWindowAttribute, runtime: runtime.ax)
         }
@@ -92,9 +106,15 @@ enum AXLogicProElements {
     /// updates while a blocking sheet is up.
     static func dialogPresent(runtime: Runtime = .production) -> Bool {
         guard let app = appRoot(runtime: runtime) else { return false }
-        guard let windows: [AXUIElement] = AXHelpers.getAttribute(
-            app, kAXWindowsAttribute, runtime: runtime.ax
-        ) else {
+        // 2026-08-15: same cast fix as mainWindow() above — raw read +
+        // decodeChildrenArray instead of getAttribute's naive cast. Kept as
+        // an explicit nil-vs-empty distinction (unlike mainWindow()'s
+        // getElementArrayAttribute) because this function's fallback
+        // behavior genuinely depends on it: nil means the read itself
+        // failed (fall back to the CGWindowList heuristic below); an
+        // empty-but-successfully-read array legitimately means "no windows,
+        // so no dialog" and should NOT trigger that fallback.
+        guard let rawWindows = runtime.ax.attributeValue(app, kAXWindowsAttribute) else {
             // Batuta (Fase 2): this used to be `return true` — fail closed by
             // ASSUMING a dialog whenever AX can't be read, which in practice
             // meant "no Accessibility ⇒ every dialog-guarded op refuses,
@@ -114,6 +134,7 @@ enum AXLogicProElements {
             // is real evidence, not a permission-shaped guess.
             return ProcessUtils.probableDialogPresentViaCGWindowList()
         }
+        let windows = AXHelpers.decodeChildrenArray(rawWindows)
         return windows.contains { isBlockingDialogWindow($0, runtime: runtime.ax) }
     }
 
