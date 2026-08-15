@@ -541,7 +541,7 @@ enum WorkflowSkillCatalog {
         ],
         "logic_project": [
             "new", "open", "save", "save_as", "close", "bounce",
-            "is_running", "get_regions",
+            "is_running", "get_regions", "select_last_region", "move_region_to_playhead",
             "export_plan", "export_run", "export_resume",
             "audit", "cleanup_plan", "cleanup_apply", "launch", "quit",
         ],

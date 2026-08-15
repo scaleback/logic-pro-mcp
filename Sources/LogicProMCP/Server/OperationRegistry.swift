@@ -68,6 +68,12 @@ enum OperationID: String, CaseIterable, Codable, Sendable, Hashable {
     case projectLaunch = "project.launch"
     case projectQuit = "project.quit"
     case projectGetRegions = "project.get_regions"
+    // Batuta (Fase 3): wiring up two region ops that AccessibilityChannel
+    // and RoutingTable already implement with real State A/B verification
+    // (AccessibilityChannel+Regions.swift) but that no dispatcher exposed —
+    // found orphaned during the Phase 3 reconnaissance.
+    case projectSelectLastRegion = "project.select_last_region"
+    case projectMoveRegionToPlayhead = "project.move_region_to_playhead"
     case projectExportPlan = "project.export_plan"
     case projectExportRun = "project.export_run"
     case projectExportResume = "project.export_resume"
@@ -318,7 +324,8 @@ enum OperationRegistry {
         ToolID.logicProject.rawValue: [
             "project.new", "project.open", "project.save", "project.save_as", "project.close",
             "project.bounce", "project.is_running", "project.launch", "project.quit",
-            "project.get_regions", "project.export_plan", "project.export_run",
+            "project.get_regions", "project.select_last_region", "project.move_region_to_playhead",
+            "project.export_plan", "project.export_run",
             "project.export_resume", "project.audit", "project.cleanup_plan",
             "project.cleanup_apply",
         ],
@@ -372,7 +379,8 @@ enum OperationRegistry {
         ],
         ToolID.logicProject.rawValue: [
             "new", "open", "save", "save_as", "close", "bounce", "is_running", "launch",
-            "quit", "get_regions", "export_plan", "export_run", "export_resume", "audit",
+            "quit", "get_regions", "select_last_region", "move_region_to_playhead",
+            "export_plan", "export_run", "export_resume", "audit",
             "cleanup_plan", "cleanup_apply",
         ],
         ToolID.logicMidi.rawValue: [
@@ -782,6 +790,13 @@ enum OperationRegistry {
         (.projectLaunch, "launch", Mutability.`mutating`, ConfirmationPolicy.l1, VerificationPolicy.readbackRequired, DeadlineClass.short, []),
         (.projectQuit, "quit", Mutability.`mutating`, ConfirmationPolicy.l3, VerificationPolicy.readbackRequired, DeadlineClass.medium, ["confirmed"]),
         (.projectGetRegions, "get_regions", Mutability.readOnly, ConfirmationPolicy.none, VerificationPolicy.none, DeadlineClass.short, []),
+        // Batuta (Fase 3): not destructive (selection/position change only,
+        // no data loss risk), so ConfirmationPolicy.none is correct — unlike
+        // edit.delete/cut/bounce_in_place, these two DO have a real readback
+        // (AccessibilityChannel+Regions.swift re-reads AX state and returns
+        // State A on a verified match), so VerificationPolicy.readbackRequired.
+        (.projectSelectLastRegion, "select_last_region", Mutability.`mutating`, ConfirmationPolicy.none, VerificationPolicy.readbackRequired, DeadlineClass.short, []),
+        (.projectMoveRegionToPlayhead, "move_region_to_playhead", Mutability.`mutating`, ConfirmationPolicy.none, VerificationPolicy.readbackRequired, DeadlineClass.short, []),
         (
             .projectExportPlan,
             "export_plan",

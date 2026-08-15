@@ -14,7 +14,7 @@ struct ProjectDispatcher: OperationTraceDispatching {
 
     static let tool = commandTool(
         name: "logic_project",
-        description: "Project lifecycle + read-only project state in Logic Pro. Commands: new, open, save, save_as, close, bounce, is_running, launch, quit, get_regions, export_plan, export_run, export_resume, audit, cleanup_plan, cleanup_apply. Params: open -> { path: String }; save_as -> { path: String }; close -> { saving?: \"yes\"|\"no\"|\"ask\" }; bounce/launch/quit -> {}; bounce requires confirmation and runs a pre-bounce project audit, returning `export_readiness_blocked` before opening the Bounce dialog if blockers such as `external_midi_regions_bounce_risk` are present; get_regions -> {} (returns { regions: [{ name, trackIndex, startBar, endBar, kind, rawHelp }], complete, scope, reason, returned_count }; Logic AX currently reports scope=visible_arrange_area and complete=false); export_plan -> { projects: [absolute .logicx], output_root: String, artifacts?: [bounce|stem|preview|variant], collision_policy?: fail_if_exists|skip_existing } dry-run only; export_run -> { ...same as export_plan, confirmed: Bool } GUARDED execution (re-plans, opens, verifies project identity by readback, bounces, verifies each artifact on disk via logic_audio, records logic_pro_mcp_export_run.v1 with HC State A/B/C; never overwrites under fail_if_exists); export_resume -> { ...same as export_run } idempotent resume (skips already-present+verified artifacts, produces the rest); audit -> read-only project/session audit JSON; cleanup_plan -> read-only serializable cleanup plan JSON; cleanup_apply -> { step_id: String, confirmed: Bool, names?: \"newA,newB\" (CSV aligned to the step's target track indices) | new_name?: String (single target) } executes ONE supported mutating cleanup-plan step (currently rename_* only) through the existing track.rename path so it inherits AX readback + Honest Contract State A/B/C. Fails closed (State C) when confirmed!=true, the step is unknown/unsupported/non-mutating, the audit shows stale/occluded inventory or a track readback gap, or rename names are missing/mismatched. Deletion steps are unsupported by construction and are always refused; others -> {}.",
+        description: "Project lifecycle + read-only project state in Logic Pro. Commands: new, open, save, save_as, close, bounce, is_running, launch, quit, get_regions, select_last_region, move_region_to_playhead, export_plan, export_run, export_resume, audit, cleanup_plan, cleanup_apply. Params: open -> { path: String }; save_as -> { path: String }; close -> { saving?: \"yes\"|\"no\"|\"ask\" }; bounce/launch/quit -> {}; bounce requires confirmation and runs a pre-bounce project audit, returning `export_readiness_blocked` before opening the Bounce dialog if blockers such as `external_midi_regions_bounce_risk` are present; get_regions -> {} (returns { regions: [{ name, trackIndex, startBar, endBar, kind, rawHelp }], complete, scope, reason, returned_count }; Logic AX currently reports scope=visible_arrange_area and complete=false); select_last_region -> {} (locates and selects the most recently created region via AX position heuristics; State A when the selected region afterward matches the located one, State B otherwise); move_region_to_playhead -> {} (Edit > Move > To Playhead on the currently selected region; State A when its start bar lands on the playhead within ±1 bar, State B on a no-op, unexpected landing spot, or no region was selected beforehand — always send select_last_region or region.get_regions selection first to know what you're moving); export_plan -> { projects: [absolute .logicx], output_root: String, artifacts?: [bounce|stem|preview|variant], collision_policy?: fail_if_exists|skip_existing } dry-run only; export_run -> { ...same as export_plan, confirmed: Bool } GUARDED execution (re-plans, opens, verifies project identity by readback, bounces, verifies each artifact on disk via logic_audio, records logic_pro_mcp_export_run.v1 with HC State A/B/C; never overwrites under fail_if_exists); export_resume -> { ...same as export_run } idempotent resume (skips already-present+verified artifacts, produces the rest); audit -> read-only project/session audit JSON; cleanup_plan -> read-only serializable cleanup plan JSON; cleanup_apply -> { step_id: String, confirmed: Bool, names?: \"newA,newB\" (CSV aligned to the step's target track indices) | new_name?: String (single target) } executes ONE supported mutating cleanup-plan step (currently rename_* only) through the existing track.rename path so it inherits AX readback + Honest Contract State A/B/C. Fails closed (State C) when confirmed!=true, the step is unknown/unsupported/non-mutating, the audit shows stale/occluded inventory or a track readback gap, or rename names are missing/mismatched. Deletion steps are unsupported by construction and are always refused; others -> {}.",
         commandDescription: "Project command to execute"
     )
 
@@ -402,6 +402,27 @@ struct ProjectDispatcher: OperationTraceDispatching {
             let result = await router.route(operation: "region.get_regions")
             await refreshRegionCache(from: result, cache: cache)
             return toolTextResult(result)
+
+        case "select_last_region":
+            // Batuta (Fase 3): wiring up AccessibilityChannel.defaultSelectLastRegion,
+            // which already does real State A/B verification — it just had no
+            // dispatcher exposing it (found orphaned during the Fase 3
+            // reconnaissance). Not destructive, so no confirmed:true gate.
+            let traceID = await startTraceIfEnabled(command: command)
+            let result = await withWriteBoundaryArmed(traceID) {
+                await routedTextResult(router, operation: "region.select_last")
+            }
+            return await finalizeTrace(result, traceID: traceID)
+
+        case "move_region_to_playhead":
+            // Batuta (Fase 3): same story as select_last_region — real State
+            // A/B verification already exists in
+            // defaultMoveSelectedRegionToPlayhead, just never wired up.
+            let traceID = await startTraceIfEnabled(command: command)
+            let result = await withWriteBoundaryArmed(traceID) {
+                await routedTextResult(router, operation: "region.move_to_playhead")
+            }
+            return await finalizeTrace(result, traceID: traceID)
 
         case "audit":
             let report = await ProjectSessionAudit.buildAudit(

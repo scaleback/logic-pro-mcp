@@ -305,6 +305,9 @@ struct HCGlobalInvariantTests {
             RouteCase(tool: "logic_project", command: "close", params: ["confirmed": .bool(true), "saving": .string("no")], operation: "project.close", destinations: [], invariant: .minimumV1),
             RouteCase(tool: "logic_project", command: "bounce", params: ["confirmed": .bool(true)], operation: "project.bounce", destinations: [], invariant: .minimumV1),
             RouteCase(tool: "logic_project", command: "cleanup_apply", params: ["step_id": .string("rename_duplicate_kick_0_1"), "confirmed": .bool(true), "names": .string("Kick L,Kick R")], operation: "project.cleanup_apply", destinations: [], invariant: .minimumV1),
+            // Batuta (Fase 3): wired-up orphaned region ops — see OperationRegistry.swift.
+            RouteCase(tool: "logic_project", command: "select_last_region", params: [:], operation: "region.select_last", destinations: [], invariant: .minimumV1),
+            RouteCase(tool: "logic_project", command: "move_region_to_playhead", params: [:], operation: "region.move_to_playhead", destinations: [], invariant: .minimumV1),
 
             RouteCase(tool: "logic_system", command: "export_support_bundle", params: ["dir": .string(fixtures.supportBundlePath)], operation: "system.export_support_bundle", destinations: [], invariant: .minimumV1),
             RouteCase(tool: "logic_system", command: "saga_execute", params: [:], operation: "system.saga_execute", destinations: [], invariant: .minimumV1),

@@ -402,6 +402,22 @@ enum SemanticOracleTable {
             "send-only VerificationPolicy.none — routes [.midiKeyCommands, .cgEvent] (blind CC "
             + "key command / keystroke; availability .requiresKeyBinding is a SETUP axis, not the "
             + "reason it lacks State A); the duplicate is echo-less (State B), so no State A exists",
+        // Batuta (Fase 3): NOT structurally unverifiable like everything else in
+        // this map — AccessibilityChannel+Regions.swift genuinely re-reads AX
+        // state after the write and returns a real State A on a verified match
+        // (VerificationPolicy.readbackRequired on both specs). These are excluded
+        // here only because no semantic oracle has been built for them YET — a
+        // real follow-up (add them to coveredMutatingOperationIDs with an actual
+        // oracle), not a permanent structural ceiling. Flagged honestly rather
+        // than silently left out of this census, or falsely claimed covered.
+        .projectSelectLastRegion:
+            "no semantic oracle built yet — NOT send-only: defaultSelectLastRegion "
+            + "does reach a real State A on a verified match. Follow-up work, not a "
+            + "structural limit; tracked in HANDOFF.md",
+        .projectMoveRegionToPlayhead:
+            "no semantic oracle built yet — NOT send-only: defaultMoveSelectedRegionToPlayhead "
+            + "does reach a real State A when the moved region lands on the playhead. "
+            + "Follow-up work, not a structural limit; tracked in HANDOFF.md",
     ]
 
     /// Mutating ops that never enter the oracle surface at all because the

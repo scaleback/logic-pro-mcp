@@ -585,6 +585,9 @@ struct OperationRegistryTests {
         ("project.launch", "launch", .mutating, .short, .readbackRequired),
         ("project.quit", "quit", .mutating, .medium, .readbackRequired),
         ("project.get_regions", "get_regions", .readOnly, .short, .none),
+        // Batuta (Fase 3): wired-up orphaned region ops — see OperationRegistry.swift.
+        ("project.select_last_region", "select_last_region", .mutating, .short, .readbackRequired),
+        ("project.move_region_to_playhead", "move_region_to_playhead", .mutating, .short, .readbackRequired),
         ("project.export_plan", "export_plan", .readOnly, .short, .none),
         ("project.export_run", "export_run", .mutating, .long, .readbackRequired),
         ("project.export_resume", "export_resume", .mutating, .long, .readbackRequired),
