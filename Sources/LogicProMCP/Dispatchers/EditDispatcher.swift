@@ -13,17 +13,38 @@ struct EditDispatcher: OperationTraceDispatching {
     private static let routedCommands: [String: EditRoute] = [
         "undo": .regular("edit.undo"),
         "redo": .regular("edit.redo"),
-        "cut": .regular("edit.cut"),
+        // Batuta (Fase 3): cut/delete/bounce_in_place act on "the current
+        // selection" with no way for the tool layer to know what that even is
+        // (a region, a MIDI note, an automation point...), so there is no
+        // readback that could confirm the right thing happened — same
+        // constraint documented for select_all below. Reporting these as
+        // clean successes was actively misleading; unverifiedIsError makes
+        // the isError:true match what verification == .none already
+        // declares. See the confirmed:true gate in handle(), which is the
+        // other half of this fix (destructive + zero verification needs a
+        // human opt-in, not just an honest failure after the fact).
+        "cut": .unverifiedIsError("edit.cut"),
         "copy": .regular("edit.copy"),
         "paste": .regular("edit.paste"),
-        "delete": .regular("edit.delete"),
+        "delete": .unverifiedIsError("edit.delete"),
         "select_all": .unverifiedIsError("edit.select_all"),
         "split": .regular("edit.split"),
         "join": .regular("edit.join"),
-        "bounce_in_place": .regular("edit.bounce_in_place"),
+        "bounce_in_place": .unverifiedIsError("edit.bounce_in_place"),
         "normalize": .regular("edit.normalize"),
         "duplicate": .regular("edit.duplicate"),
         "toggle_step_input": .regular("edit.toggle_step_input"),
+    ]
+
+    /// Batuta (Fase 3): the Phase 3 anillo rule — nothing destructive without
+    /// either a readback or a human confirmation. These three have no
+    /// feasible readback (see routedCommands above), so confirmation is the
+    /// only guard available. Registry backs this with ConfirmationPolicy.l2
+    /// on the same three ops (OperationRegistry.swift) — this set must stay
+    /// in sync with that or the census test (OperationRegistryTests) catches
+    /// the drift.
+    private static let confirmationRequiredCommands: Set<String> = [
+        "cut", "delete", "bounce_in_place",
     ]
 
     private static let validQuantizeGrids = [
@@ -67,6 +88,25 @@ struct EditDispatcher: OperationTraceDispatching {
              "bounce_in_place", "normalize", "duplicate", "toggle_step_input":
             guard let route = routedCommands[command] else {
                 return toolTextResult("Internal edit route missing for \(command)", isError: true)
+            }
+            if confirmationRequiredCommands.contains(command) {
+                switch strictBoolParam(params, "confirmed") {
+                case .missing, .value(false):
+                    let level = DestructivePolicy.promptLabel(
+                        of: OperationRegistry.spec(
+                            tool: ToolID.logicEdit.rawValue,
+                            command: command
+                        )?.confirmation ?? .l2
+                    ) ?? "L2"
+                    let response = """
+                        {"confirmation_required":true,"command":"\(command)","level":"\(level)","message":"\(command) acts on Logic Pro's current selection, which this server cannot enumerate or verify afterward. Re-call with confirmed:true to proceed anyway.","confirm_command":"logic_edit(\\"\(command)\\", {\\"confirmed\\": true})"}
+                        """
+                    return toolTextResult(response)
+                case .value(true):
+                    break
+                case .invalid(let hint):
+                    return toolInvalidParamsResult("\(command) \(hint)")
+                }
             }
             let traceID = await startTraceIfEnabled(command: command)
             let result = await routeEditCommand(route, router: router, traceID: traceID)

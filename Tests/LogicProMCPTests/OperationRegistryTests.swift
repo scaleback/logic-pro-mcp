@@ -516,6 +516,12 @@ struct OperationRegistryTests {
         #expect(OperationRegistry.spec(tool: "logic_edit", command: "unknown") == nil)
     }
 
+    /// Batuta (Fase 3): the three edit ops with no feasible readback — see
+    /// `confirmationCensus` above and `EditDispatcher.confirmationRequiredCommands`.
+    private static let editCommandsRequiringConfirmation: Set<String> = [
+        "cut", "delete", "bounce_in_place",
+    ]
+
     @Test("all edit metadata and derived availability match runtime truth")
     func editMetadataAndAvailability() throws {
         let tool = try #require(ToolID(rawValue: "logic_edit"))
@@ -527,7 +533,9 @@ struct OperationRegistryTests {
             #expect(spec.tool == tool)
             #expect(spec.command == entry.command)
             #expect(spec.mutability == Mutability.`mutating`)
-            #expect(spec.confirmation == .none)
+            #expect(spec.confirmation == (
+                Self.editCommandsRequiringConfirmation.contains(entry.command) ? .l2 : .none
+            ))
             #expect(spec.target == .none)
             #expect(spec.verification == entry.verification)
             #expect(spec.retry == .neverAutomatic)
@@ -600,6 +608,13 @@ struct OperationRegistryTests {
         ("logic_project", "export_resume", .l2),
         ("logic_mixer", "insert_plugin", .l2),
         ("logic_system", "clear_traces", .l2),
+        // Batuta (Fase 3): the three edit ops with no feasible readback
+        // (they act on "current selection", which the server can't
+        // enumerate) — confirmation is the only guard available. See
+        // EditDispatcher.confirmationRequiredCommands.
+        ("logic_edit", "cut", .l2),
+        ("logic_edit", "delete", .l2),
+        ("logic_edit", "bounce_in_place", .l2),
         ("logic_project", "close", .l3),
         ("logic_project", "quit", .l3),
     ]

@@ -2305,19 +2305,24 @@ private actor SelectiveFailChannel: Channel {
 }
 
 @Test func testEditDispatcherRoutesPrimaryCommands() async {
-    let cases: [(command: String, operation: String)] = [
-        ("undo", "edit.undo"),
-        ("redo", "edit.redo"),
-        ("cut", "edit.cut"),
-        ("copy", "edit.copy"),
-        ("paste", "edit.paste"),
-        ("delete", "edit.delete"),
-        ("select_all", "edit.select_all"),
-        ("split", "edit.split"),
-        ("join", "edit.join"),
-        ("bounce_in_place", "edit.bounce_in_place"),
-        ("normalize", "edit.normalize"),
-        ("duplicate", "edit.duplicate"),
+    // Batuta (Fase 3): cut/delete/bounce_in_place now gate on confirmed:true
+    // (see testEditDispatcherRequiresConfirmationForDestructiveCommands
+    // below for the gate itself) — pass it here so this test keeps
+    // exercising what it's actually for: that each command routes to the
+    // right operation string once past any gate.
+    let cases: [(command: String, operation: String, params: [String: Value])] = [
+        ("undo", "edit.undo", [:]),
+        ("redo", "edit.redo", [:]),
+        ("cut", "edit.cut", ["confirmed": .bool(true)]),
+        ("copy", "edit.copy", [:]),
+        ("paste", "edit.paste", [:]),
+        ("delete", "edit.delete", ["confirmed": .bool(true)]),
+        ("select_all", "edit.select_all", [:]),
+        ("split", "edit.split", [:]),
+        ("join", "edit.join", [:]),
+        ("bounce_in_place", "edit.bounce_in_place", ["confirmed": .bool(true)]),
+        ("normalize", "edit.normalize", [:]),
+        ("duplicate", "edit.duplicate", [:]),
     ]
 
     for testCase in cases {
@@ -2328,7 +2333,7 @@ private actor SelectiveFailChannel: Channel {
 
         let result = await EditDispatcher.handle(
             command: testCase.command,
-            params: [:],
+            params: testCase.params,
             router: router,
             cache: cache
         )
@@ -2338,6 +2343,75 @@ private actor SelectiveFailChannel: Channel {
         #expect(ops.count == 1)
         #expect(ops[0].0 == testCase.operation)
     }
+}
+
+@Test func testEditDispatcherRequiresConfirmationForDestructiveCommands() async {
+    // Batuta (Fase 3): cut/delete/bounce_in_place have no feasible readback
+    // (they act on Logic's current selection), so a human confirmed:true
+    // is the only guard — mirrors MixerDispatcher's insert_plugin gate.
+    for command in ["cut", "delete", "bounce_in_place"] {
+        let router = ChannelRouter()
+        let keyCmd = MockChannel(id: .midiKeyCommands)
+        await router.register(keyCmd)
+        let cache = StateCache()
+
+        let bareResult = await EditDispatcher.handle(
+            command: command, params: [:], router: router, cache: cache
+        )
+        #expect((await keyCmd.executedOps).isEmpty, "\(command) must not reach the channel unconfirmed")
+        let bareText = dispatcherText(bareResult)
+        #expect(bareText.contains("\"confirmation_required\":true"))
+        #expect(bareText.contains("\"command\":\"\(command)\""))
+        #expect(bareText.contains("\"level\":\"L2\""))
+
+        let explicitFalseResult = await EditDispatcher.handle(
+            command: command, params: ["confirmed": .bool(false)], router: router, cache: cache
+        )
+        #expect(dispatcherText(explicitFalseResult).contains("\"confirmation_required\":true"))
+        #expect((await keyCmd.executedOps).isEmpty)
+
+        let invalidResult = await EditDispatcher.handle(
+            command: command, params: ["confirmed": .string("yes")], router: router, cache: cache
+        )
+        #expect(invalidResult.isError!)
+        #expect((await keyCmd.executedOps).isEmpty)
+
+        let confirmedResult = await EditDispatcher.handle(
+            command: command, params: ["confirmed": .bool(true)], router: router, cache: cache
+        )
+        #expect(!confirmedResult.isError!)
+        let ops = await keyCmd.executedOps
+        #expect(ops.count == 1)
+        #expect(ops[0].0 == "edit.\(command)")
+    }
+}
+
+@Test func testEditDispatcherDeleteReportsUnverifiedSendAsError() async {
+    // Batuta (Fase 3): the honest half of the fix — even once confirmed,
+    // a send-only result (verified:false, no readback exists) must surface
+    // as isError:true, not a silent success. Mirrors edit.select_all, which
+    // already used this pattern before this fix touched cut/delete/bounce_in_place.
+    let router = ChannelRouter()
+    let cgEvent = StaticResultChannel(
+        id: .cgEvent,
+        results: [
+            "edit.delete": .success(HonestContract.encodeStateB(
+                reason: .readbackUnavailable,
+                extras: ["operation": "edit.delete", "sent": true]
+            )),
+        ]
+    )
+    await router.register(cgEvent)
+    let cache = StateCache()
+
+    let result = await EditDispatcher.handle(
+        command: "delete", params: ["confirmed": .bool(true)], router: router, cache: cache
+    )
+
+    #expect(result.isError!, "an unverified destructive send must surface as isError:true")
+    let ops = await cgEvent.executedOps
+    #expect(ops.count == 1)
+    #expect(ops[0].0 == "edit.delete")
 }
 
 @Test func testEditDispatcherQuantizeRequiresExplicitGrid() async {

@@ -154,6 +154,11 @@ struct OperationCatalogTests {
             "insert", "mode", "plugin", "plugin_id", "plugin_name", "project_expected_path", "slot",
         ],
         .editQuantize: ["grid", "value"],
+        // Batuta (Fase 3): confirmed:true gate on the three edit ops with no
+        // feasible readback — see EditDispatcher.confirmationRequiredCommands.
+        .editCut: ["confirmed"],
+        .editDelete: ["confirmed"],
+        .editBounceInPlace: ["confirmed"],
         .projectOpen: ["confirmed", "path"],
         .projectSaveAs: ["confirmed", "path"],
         .projectClose: ["confirmed", "saving"],

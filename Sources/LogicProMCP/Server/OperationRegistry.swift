@@ -729,25 +729,40 @@ enum OperationRegistry {
     } + ([
         (.editUndo, "undo", AvailabilityPolicy.defaultInstall, VerificationPolicy.none, []),
         (.editRedo, "redo", .defaultInstall, .none, []),
-        (.editCut, "cut", .defaultInstall, .none, []),
+        // Batuta (Fase 3): cut/delete/bounce_in_place act on Logic's current
+        // selection, which this server has no way to enumerate or verify
+        // afterward — VerificationPolicy stays .none (that fact doesn't
+        // change), but ConfirmationPolicy.l2 below adds the human opt-in
+        // that a destructive, unverifiable op needs per the Phase 3 anillo
+        // rule. "confirmed" must be in commandSpecific or the gate in
+        // EditDispatcher can never receive it past strict param validation.
+        (.editCut, "cut", .defaultInstall, .none, ["confirmed"]),
         (.editCopy, "copy", .defaultInstall, .none, []),
         (.editPaste, "paste", .defaultInstall, .none, []),
-        (.editDelete, "delete", .defaultInstall, .none, []),
+        (.editDelete, "delete", .defaultInstall, .none, ["confirmed"]),
         (.editSelectAll, "select_all", .defaultInstall, .none, []),
         (.editSplit, "split", .defaultInstall, .none, []),
         (.editJoin, "join", .defaultInstall, .none, []),
         (.editQuantize, "quantize", .defaultInstall, .none, ["grid", "value"]),
-        (.editBounceInPlace, "bounce_in_place", .defaultInstall, .none, []),
+        (.editBounceInPlace, "bounce_in_place", .defaultInstall, .none, ["confirmed"]),
         (.editNormalize, "normalize", .requiresKeyBinding, .none, []),
         (.editDuplicate, "duplicate", .requiresKeyBinding, .none, []),
         (.editToggleStepInput, "toggle_step_input", .requiresKeyBinding, .none, []),
     ] as [(OperationID, String, AvailabilityPolicy, VerificationPolicy, Set<String>)]).map { entry in
-        OperationSpec(
+        // Batuta (Fase 3): confirmation gate for the three unverifiable
+        // destructive edit ops. Kept as a projection here (not a stored
+        // per-row field, matching how VerificationPolicy already varies via
+        // entry.3) so EditDispatcher.confirmationRequiredCommands and this
+        // set can be diffed against each other on any future edit — the
+        // OperationRegistryTests confirmationCensus test catches drift
+        // between this and what's actually declared.
+        let requiresConfirmation: Set<OperationID> = [.editCut, .editDelete, .editBounceInPlace]
+        return OperationSpec(
             id: entry.0,
             tool: .logicEdit,
             command: entry.1,
             mutability: Mutability.`mutating`,
-            confirmation: .none,
+            confirmation: requiresConfirmation.contains(entry.0) ? .l2 : .none,
             target: .none,
             verification: entry.3,
             retry: .neverAutomatic,
