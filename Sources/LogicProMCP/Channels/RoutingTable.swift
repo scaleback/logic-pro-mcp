@@ -8,21 +8,40 @@ extension ChannelRouter {
     /// V2 routing table: MCU primary for mixer/transport/track state, MIDIKeyCommands for editing.
     /// PRD §4.3 + §4.3.1 contract changes.
     static let v2RoutingTable: [String: [ChannelID]] = [
-        // Transport — AX control-bar click primary (works without MCU / MIDI Learn),
-        // AppleScript before send-only MIDI/CGEvent fallbacks. On Creator
-        // Studio 12.3 the AX control can be absent and MMC can return a
-        // successful send-only State B while playback remains stopped. Once a
-        // send-only channel crosses the write boundary it cannot safely fall
-        // through, so try the readback-capable AppleScript path first.
-        "transport.play":             [.accessibility, .appleScript, .mcu, .coreMIDI, .cgEvent],
+        // Transport — Batuta (Fase 2): MCU promoted to primary for
+        // play/stop/record. Two things changed since the AX/AppleScript-first
+        // reasoning below was written: (1) `MCUChannel.sendTransport` used to
+        // send the button PRESS only, never the RELEASE — found and fixed
+        // 2026-08-15 after a live incident (a `transport.stop` that reported
+        // success left playback running; `MCU_TRACE=1` showed Logic echoing
+        // both press/release halves for Play, but the code only ever sent
+        // one). Re-verified after the fix: 5/5 play + 5/5 stop cycles, each
+        // independently screenshot-confirmed, zero failures — MCU transport
+        // is no longer the flaky option it was when this table was written.
+        // (2) MCU is provably frontmost-independent (confirmed live with
+        // Logic genuinely backgrounded — see HANDOFF.md), where AppleScript
+        // activates Logic as an Apple-Events side effect and CGEvent's own
+        // FrontmostGate documents that a keystroke posted while backgrounded
+        // is silently swallowed. For a tool whose whole point is not
+        // interrupting whatever the user is doing, MCU is now the right
+        // default, not just the permission-free one.
+        // AX stays as the first fallback — still the only channel that gives
+        // a verified (not just sent) result when it's available. Send-only
+        // channels still can't safely fall through past each other once a
+        // write crosses the boundary (same constraint as before), so MCU's
+        // position among the send-only options is the meaningful choice, not
+        // the exact order of the ones after it.
+        "transport.play":             [.mcu, .accessibility, .appleScript, .coreMIDI, .cgEvent],
         // Stop differs from Play/Record: in live 12.2 sessions the AX Play
         // checkbox can refuse to clear while playback is active, and MMC /
-        // AppleScript "stop" can still leave transport running. The
-        // spacebar-equivalent CGEvent path proved to be the first reliable
-        // non-AX fallback, so prefer it before MIDI/AppleScript fallbacks and
-        // let the dispatcher's live readback gate decide success.
-        "transport.stop":             [.cgEvent, .accessibility, .mcu, .coreMIDI, .appleScript],
-        "transport.record":           [.accessibility, .mcu, .coreMIDI, .cgEvent, .appleScript],
+        // AppleScript "stop" can still leave transport running. CGEvent
+        // (spacebar-equivalent) was the first reliable non-AX fallback found
+        // at the time — but it depends on Logic being frontmost (see above),
+        // which MCU does not. With the press/release fix, MCU is now equally
+        // reliable AND frontmost-independent, so it leads; CGEvent stays
+        // next as the still-solid fallback the comment above already proved out.
+        "transport.stop":             [.mcu, .cgEvent, .accessibility, .coreMIDI, .appleScript],
+        "transport.record":           [.mcu, .accessibility, .coreMIDI, .cgEvent, .appleScript],
         // Logic 12.x has no distinct "pause" — the playhead stops in place via
         // the Stop button / spacebar. MMC "pause" (the old primary) is silently
         // ignored by Logic, so a verified pause always failed closed. Mirror the
