@@ -156,22 +156,45 @@ struct MCUProtocol {
 
     // MARK: - Transport
 
-    /// Encode transport command → Note On bytes.
-    static func encodeTransport(_ command: TransportCommand) -> [UInt8] {
-        let function: ButtonFunction
+    /// Batuta (Fase 2): factored out so both the press and the release can be
+    /// encoded for the same button without duplicating this switch — see
+    /// `encodeTransport`/`encodeTransportRelease` below for why both matter.
+    static func transportButtonFunction(_ command: TransportCommand) -> ButtonFunction {
         switch command {
-        case .play: function = .play
-        case .stop: function = .stop
-        case .record: function = .record
-        case .rewind: function = .rewind
-        case .fastForward: function = .fastForward
-        case .cycle: function = .cycle
-        case .drop: function = .drop
-        case .replace: function = .replace
-        case .click: function = .click
-        case .soloGlobal: function = .soloGlobal
+        case .play: return .play
+        case .stop: return .stop
+        case .record: return .record
+        case .rewind: return .rewind
+        case .fastForward: return .fastForward
+        case .cycle: return .cycle
+        case .drop: return .drop
+        case .replace: return .replace
+        case .click: return .click
+        case .soloGlobal: return .soloGlobal
         }
-        return encodeButton(function, on: true)
+    }
+
+    /// Encode transport command → Note On (press) bytes.
+    static func encodeTransport(_ command: TransportCommand) -> [UInt8] {
+        encodeButton(transportButtonFunction(command), on: true)
+    }
+
+    /// Batuta (Fase 2): the release half of a transport button press.
+    /// `sendTransport` in MCUChannel used to send only this method's `on`
+    /// counterpart and never the release — a real Mackie Control transport
+    /// button always sends press (vel 127) then release (vel 0) shortly
+    /// after, and `MCU_TRACE=1` confirmed Logic echoes both halves back for
+    /// Play (live capture, 2026-08-15). Sending press-only deviates from
+    /// what every real controller does and what Logic's parser is written
+    /// against — a plausible cause of the intermittent "sent successfully,
+    /// transport didn't actually change" failures found in Fase 2 end-to-end
+    /// testing (confirmed live: two of several stop attempts left playback
+    /// running despite `success:true`). This alone isn't proven to be the
+    /// full explanation — no state-change echo exists yet to confirm it shut
+    /// the loop — but it brings the encoder in line with the protocol every
+    /// other implementation follows, which is worth doing regardless.
+    static func encodeTransportRelease(_ command: TransportCommand) -> [UInt8] {
+        encodeButton(transportButtonFunction(command), on: false)
     }
 
     // MARK: - V-Pot

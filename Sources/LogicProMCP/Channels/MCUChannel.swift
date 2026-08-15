@@ -540,8 +540,16 @@ actor MCUChannel: Channel {
     }
 
     private func sendTransport(_ command: MCUProtocol.TransportCommand) async -> ChannelResult {
-        let bytes = MCUProtocol.encodeTransport(command)
-        await transport.send(bytes)
+        // Batuta (Fase 2): press THEN release, not press-only — see
+        // MCUProtocol.encodeTransportRelease for the evidence. 30ms mirrors
+        // a real button-press duration; short enough not to add perceptible
+        // latency, long enough to be a distinguishable press/release pair
+        // rather than two messages arriving back to back.
+        let pressBytes = MCUProtocol.encodeTransport(command)
+        await transport.send(pressBytes)
+        try? await Task.sleep(nanoseconds: 30_000_000)
+        let releaseBytes = MCUProtocol.encodeTransportRelease(command)
+        await transport.send(releaseBytes)
         // v3.1.2 (P0-1) — MCU transport buttons are press-only triggers; Logic
         // does not echo a transport state back over the same MIDI surface, so
         // every send is honestly `readback_unavailable`. Wrap in HC envelope
