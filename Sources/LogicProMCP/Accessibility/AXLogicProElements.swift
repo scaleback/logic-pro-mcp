@@ -61,19 +61,34 @@ enum AXLogicProElements {
         // Step 1 — enumerate all windows (test doubles may not implement this;
         // falls back to legacy mainWindow for those).
         //
-        // 2026-08-15: getElementArrayAttribute, not getAttribute — see its
+        // 2026-08-15/16: getElementArrayAttribute, not getAttribute — see its
         // doc comment in AXHelpers.swift. The naive `as? [AXUIElement]` cast
         // that used to be here is unreliable for kAXWindowsAttribute
-        // (AXUIElement isn't toll-free-bridged) and is worth fixing on its
-        // own merits, but it turned out NOT to be why mainWindow() was
-        // returning nil live with Accessibility genuinely trusted and
-        // Logic's window normal and frontmost — kAXWindowsAttribute itself
-        // fails at the raw AXUIElementCopyAttributeValue call with
-        // -25204 (kAXErrorCannotComplete), instantly (not a
-        // AXUIElementSetMessagingTimeout(2.5) timeout — raising it to 6.0s
-        // made no difference, and the failure was immediate, not delayed).
-        // Root cause NOT found; see HANDOFF.md for the full investigation
-        // and the leading unconfirmed hypothesis (window/Space affinity).
+        // (AXUIElement isn't toll-free-bridged) and was worth fixing on its
+        // own merits, but it turned out to be only one of THREE separate,
+        // unrelated causes behind mainWindow() returning nil live — all
+        // fixed, none of them here:
+        //   1. App Sandbox blocks kAXWindowsAttribute cross-process reads
+        //      from the sandboxed main process outright (kAXErrorCannotComplete,
+        //      -25204) — moved the whole Accessibility channel to a separate
+        //      unsandboxed process (AXHelperProxyChannel.swift).
+        //   2. Once unsandboxed, `appRoot()` still returned nil from THAT
+        //      process specifically: its NSRunningApplication-backed PID
+        //      lookup needs an actively-serviced run loop (see the staleness
+        //      note on `logicOwnsTheKeyboard()`), which a bare blocking
+        //      `readLine()` stdin loop never gave it — fixed in the helper's
+        //      own main.swift (async I/O + `RunLoop.main.run()`).
+        //   3. Even unsandboxed, run-loop-serviced, and genuinely trusted,
+        //      the SAME -25204 error persisted for kAXWindowsAttribute
+        //      against EVERY target app tried (Logic Pro, Finder, even
+        //      Claude itself) — turned out to be about being a DESCENDANT
+        //      of the sandboxed process at all (confirmed: the identical
+        //      binary launched via `launchctl submit` instead worked
+        //      immediately, no code changes). Fixed by running the helper
+        //      as its own independent launchd LaunchAgent, talking to the
+        //      sandboxed side over named pipes rather than being spawned by
+        //      it — see AXHelperProxyChannel.swift and
+        //      LogicProMCPAXHelper/main.swift for the full architecture.
         let windows: [AXUIElement] = AXHelpers.getElementArrayAttribute(
             app, kAXWindowsAttribute, runtime: runtime.ax
         )

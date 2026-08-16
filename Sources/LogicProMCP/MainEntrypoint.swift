@@ -19,7 +19,9 @@ enum MainEntrypoint {
     static func run(
         arguments: [String],
         permissionCheck: () -> PermissionChecker.PermissionStatus = PermissionChecker.check,
-        serverFactory: () -> any ServerStarting = { LogicProServer() },
+        // Fase 3 (tarea #26): ver el mismo comentario en LogicProMCPMain.swift —
+        // este es el otro de los dos únicos puntos de entrada de producción.
+        serverFactory: () -> any ServerStarting = { LogicProServer(axChannel: AXHelperProxyChannel()) },
         approvalStoreFactory: () -> any ManualValidationStoring = { ManualValidationStore() },
         doctorRuntime: SetupDoctor.Runtime = .production,
         lifecycleRuntime: SetupLifecycle.Runtime = .production,

@@ -83,12 +83,15 @@ let package = Package(
             dependencies: ["LogicProMCP"],
             path: "Sources/TrustedVerifier"
         ),
-        // Batuta (Fase 3): deliberately NO sandbox entitlement, no
-        // Info.plist/CFBundleIdentifier embed (that trick exists only to
-        // stop _libsecinit_appsandbox from crashing a SANDBOXED bare
-        // executable — irrelevant here since this one is never sandboxed).
-        // See Sources/LogicProMCPAXHelper/main.swift for what this is and
-        // why it exists.
+        // Batuta (Fase 3): deliberately NO sandbox entitlement — this process
+        // is never sandboxed, so it needs none of that, and no embedded
+        // Info.plist either (tried adding one on 2026-08-16 chasing the
+        // -25204 bug below — a resolvable CFBundleIdentifier turned out not
+        // to be the missing piece; kept the code clean rather than carry a
+        // disproven fix forward). Runs as an independent launchd
+        // LaunchAgent — see AXHelperProxyChannel.swift and this target's
+        // own main.swift for the live-tested root cause (process ancestry,
+        // not entitlements) and the full architecture.
         .executableTarget(
             name: "LogicProMCPAXHelper",
             dependencies: ["LogicProMCP"],
