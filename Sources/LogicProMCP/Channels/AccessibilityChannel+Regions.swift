@@ -568,7 +568,8 @@ extension AccessibilityChannel {
     /// is State B, never a silently-assumed success.
     static func defaultBounceRegionInPlace(
         runtime: AXLogicProElements.Runtime = .production,
-        settle: @Sendable () async -> Void = { try? await Task.sleep(nanoseconds: 1_500_000_000) }
+        settle: @Sendable () async -> Void = { try? await Task.sleep(nanoseconds: 1_500_000_000) },
+        menuOpenSettle: @Sendable () async -> Void = { try? await Task.sleep(nanoseconds: 200_000_000) }
     ) async -> ChannelResult {
         guard let pre = selectedRegionInfo(runtime: runtime) else {
             return .error(HonestContract.encodeStateC(
@@ -605,14 +606,17 @@ extension AccessibilityChannel {
         // An unopened Cocoa NSMenu submenu can report zero AX children until
         // something opens it once — live testing (2026-08-16) found the
         // single recursive lookup this used before came back empty for the
-        // Bounce or Join submenu specifically. Press each parent along the
-        // path (mirroring a real user clicking Edit > Bounce or Join) before
-        // searching under it, rather than assuming one lookup sees the whole
-        // tree. Known gap: if resolution fails partway after a parent press,
-        // this can leave that submenu open on screen — no data-safety risk,
-        // but worth an Escape-key cleanup in a follow-up if it proves noisy
-        // in practice.
+        // Bounce or Join submenu specifically, and pressing the parent
+        // without a beat afterward still came back empty (population isn't
+        // synchronous with the press). Press each parent along the path
+        // (mirroring a real user clicking Edit > Bounce or Join), then give
+        // it `menuOpenSettle` before searching under it, rather than
+        // assuming one lookup sees the whole tree immediately. Known gap: if
+        // resolution fails partway after a parent press, this can leave
+        // that submenu open on screen — no data-safety risk, but worth an
+        // Escape-key cleanup in a follow-up if it proves noisy in practice.
         _ = AXHelpers.performAction(editBarItem, kAXPressAction, runtime: runtime.ax)
+        await menuOpenSettle()
 
         guard let bounceOrJoinItem = AXLocalePolicy.findMenuItem(
             under: editBarItem,
@@ -626,6 +630,7 @@ extension AccessibilityChannel {
         }
 
         _ = AXHelpers.performAction(bounceOrJoinItem, kAXPressAction, runtime: runtime.ax)
+        await menuOpenSettle()
 
         guard let bounceMenuItem = AXLocalePolicy.findMenuItem(
             under: bounceOrJoinItem,

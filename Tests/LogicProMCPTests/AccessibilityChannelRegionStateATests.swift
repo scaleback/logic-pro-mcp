@@ -534,7 +534,8 @@ private func addBounceMenu(
 
     let result = await AccessibilityChannel.defaultBounceRegionInPlace(
         runtime: fixture.runtime,
-        settle: { /* skip in tests */ }
+        settle: { /* skip in tests */ },
+        menuOpenSettle: { }
     )
 
     #expect(result.isSuccess)
@@ -566,7 +567,8 @@ private func addBounceMenu(
 
     let result = await AccessibilityChannel.defaultBounceRegionInPlace(
         runtime: fixture.runtime,
-        settle: { }
+        settle: { },
+        menuOpenSettle: { }
     )
 
     // State C surfaces as .error at the ChannelResult level, per HonestContract.
@@ -597,7 +599,8 @@ private func addBounceMenu(
 
     let result = await AccessibilityChannel.defaultBounceRegionInPlace(
         runtime: fixture.runtime,
-        settle: { }
+        settle: { },
+        menuOpenSettle: { }
     )
 
     guard case .error(let message) = result else {
@@ -629,7 +632,8 @@ private func addBounceMenu(
 
     let result = await AccessibilityChannel.defaultBounceRegionInPlace(
         runtime: fixture.runtime,
-        settle: { }
+        settle: { },
+        menuOpenSettle: { }
     )
 
     #expect(result.isSuccess)
@@ -657,7 +661,8 @@ private func addBounceMenu(
 
     let result = await AccessibilityChannel.defaultBounceRegionInPlace(
         runtime: fixture.runtime,
-        settle: { }
+        settle: { },
+        menuOpenSettle: { }
     )
 
     #expect(result.isSuccess)
@@ -685,7 +690,8 @@ private func addBounceMenu(
 
     let result = await AccessibilityChannel.defaultBounceRegionInPlace(
         runtime: fixture.runtime,
-        settle: { }
+        settle: { },
+        menuOpenSettle: { }
     )
 
     guard case .error(let message) = result else {
@@ -723,7 +729,8 @@ private func addBounceMenu(
 
     let result = await AccessibilityChannel.defaultBounceRegionInPlace(
         runtime: fixture.runtime,
-        settle: { }
+        settle: { },
+        menuOpenSettle: { }
     )
 
     guard case .error(let message) = result else {
@@ -750,7 +757,8 @@ private func addBounceMenu(
 
     let result = await AccessibilityChannel.defaultBounceRegionInPlace(
         runtime: fixture.runtime,
-        settle: { }
+        settle: { },
+        menuOpenSettle: { }
     )
 
     guard case .error(let message) = result else {
