@@ -418,6 +418,11 @@ enum SemanticOracleTable {
             "no semantic oracle built yet — NOT send-only: defaultMoveSelectedRegionToPlayhead "
             + "does reach a real State A when the moved region lands on the playhead. "
             + "Follow-up work, not a structural limit; tracked in HANDOFF.md",
+        .projectBounceRegion:
+            "no semantic oracle built yet — NOT send-only: defaultBounceRegionInPlace "
+            + "does reach a real State A when the selected region is audio at the same "
+            + "track/bar post-bounce. Follow-up work, not a structural limit; tracked in "
+            + "HANDOFF.md",
     ]
 
     /// Mutating ops that never enter the oracle surface at all because the

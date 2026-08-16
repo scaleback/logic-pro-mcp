@@ -59,12 +59,13 @@ struct QualificationRunnerTests {
         // validator), protocolSmoke == 0. The mutating ops are unchanged (still
         // defer to ADR-001-c for live mutation) except the count itself, which
         // grew 87 -> 89 with the two Fase-3 region ops wired up in
-        // ProjectDispatcher — they defer for the same reason as the rest: no
-        // semantic oracle built for them yet (see SemanticOracleTable.swift).
-        #expect(operationCases.count == 112)
+        // ProjectDispatcher, then 89 -> 90 with region.bounce — they defer for
+        // the same reason as the rest: no semantic oracle built for them yet
+        // (see SemanticOracleTable.swift).
+        #expect(operationCases.count == 113)
         #expect(operationCases.filter { $0.status == .passed }.count == 23)
         #expect(operationCases.filter { $0.status == .protocolSmoke }.isEmpty)
-        #expect(operationCases.filter { $0.status == .notQualified }.count == 89)
+        #expect(operationCases.filter { $0.status == .notQualified }.count == 90)
         #expect(operationCases.filter { $0.status == .failed }.isEmpty)
         #expect(operationCases.filter { $0.status == .passed }.allSatisfy {
             $0.verificationKind == .semanticReadback
@@ -252,7 +253,7 @@ struct QualificationRunnerTests {
         let specs = OperationRegistry.specs
         let driveResult = Self.driveResult(specs: specs, qualifiedReadOperationCount: 0)
         #expect(driveResult.operationResults.values.filter { $0.status == .passed }.isEmpty)
-        #expect(driveResult.operationResults.values.filter { $0.status == .notQualified }.count == 112)
+        #expect(driveResult.operationResults.values.filter { $0.status == .notQualified }.count == 113)
         let fixture = try Fixture(specs: specs, drive: { _ in driveResult })
         defer { fixture.remove() }
 
@@ -1187,7 +1188,7 @@ struct QualificationRunnerTests {
         ))
 
         #expect(result.handshakeOK)
-        #expect(result.catalog?.operationCount == 112)
+        #expect(result.catalog?.operationCount == 113)
         #expect(result.catalogCountMatch)
         #expect(result.traceOK)
 

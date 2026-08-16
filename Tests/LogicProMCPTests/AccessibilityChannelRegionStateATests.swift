@@ -461,3 +461,177 @@ private func makeRegionFixture(
     #expect(sel?.name == "B")
     #expect(sel?.startBar == 7)
 }
+
+// MARK: - region.bounce — State A/B/C paths
+
+@Test func testBounceRegionReturnsStateAOnAudioMatch() async {
+    // Pre: selected MIDI region at bar 1-3. Bounce rewrites it to "audio" at
+    // the same bar range (in-place, same position) → State A verified:true.
+    let preHelp = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., MIDI 리전."
+    let postHelp = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., 오디오 리전."
+
+    let fixture = makeRegionFixture(
+        headers: [(axPoint(0, 100), axSize(200, 40))],
+        regions: [(
+            name: "RegionA",
+            help: preHelp,
+            pos: axPoint(240, 108),
+            size: axSize(320, 24),
+            selected: true
+        )],
+        playheadPosition: "1.1.1.1"
+    )
+
+    let result = await AccessibilityChannel.defaultBounceRegionInPlace(
+        runtime: fixture.runtime,
+        executeScript: { _ in
+            fixture.builder.setAttribute(
+                fixture.builder.element(3_000),
+                kAXHelpAttribute as String,
+                postHelp
+            )
+            return .success("OK")
+        },
+        settle: { /* skip in tests */ }
+    )
+
+    #expect(result.isSuccess)
+    let obj = decodeJSON(result.message)
+    #expect((obj["success"] as? Bool)!)
+    #expect((obj["verified"] as? Bool)!)
+    #expect(obj["pre_kind"] as? String == "midi")
+    #expect(obj["post_kind"] as? String == "audio")
+    #expect(obj["pre_start_bar"] as? Int == 1)
+    #expect(obj["post_start_bar"] as? Int == 1)
+}
+
+@Test func testBounceRegionFailsClosedWhenNothingSelected() async {
+    let help = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., MIDI 리전."
+    let fixture = makeRegionFixture(
+        headers: [(axPoint(0, 100), axSize(200, 40))],
+        regions: [(
+            name: "RegionA", help: help, pos: axPoint(240, 108), size: axSize(320, 24), selected: false
+        )],
+        playheadPosition: "1.1.1.1"
+    )
+
+    let result = await AccessibilityChannel.defaultBounceRegionInPlace(
+        runtime: fixture.runtime,
+        executeScript: { _ in
+            Issue.record("bounce keystroke should never be sent when nothing is selected")
+            return .success("OK")
+        },
+        settle: { }
+    )
+
+    // State C surfaces as .error at the ChannelResult level, per HonestContract.
+    guard case .error(let message) = result else {
+        Issue.record("expected .error, got \(result)")
+        return
+    }
+    #expect(message.contains("element_not_found"))
+    #expect(message.contains("no region is currently selected"))
+}
+
+@Test func testBounceRegionFailsClosedWhenAlreadyAudio() async {
+    let help = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., 오디오 리전."
+    let fixture = makeRegionFixture(
+        headers: [(axPoint(0, 100), axSize(200, 40))],
+        regions: [(
+            name: "RegionA", help: help, pos: axPoint(240, 108), size: axSize(320, 24), selected: true
+        )],
+        playheadPosition: "1.1.1.1"
+    )
+
+    let result = await AccessibilityChannel.defaultBounceRegionInPlace(
+        runtime: fixture.runtime,
+        executeScript: { _ in
+            Issue.record("bounce keystroke should never be sent for an already-audio region")
+            return .success("OK")
+        },
+        settle: { }
+    )
+
+    guard case .error(let message) = result else {
+        Issue.record("expected .error, got \(result)")
+        return
+    }
+    #expect(message.contains("invalid_params"))
+    #expect(message.contains("already audio"))
+}
+
+@Test func testBounceRegionReturnsStateBWhenSelectionLostAfterBounce() async {
+    let preHelp = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., MIDI 리전."
+    let fixture = makeRegionFixture(
+        headers: [(axPoint(0, 100), axSize(200, 40))],
+        regions: [(
+            name: "RegionA", help: preHelp, pos: axPoint(240, 108), size: axSize(320, 24), selected: true
+        )],
+        playheadPosition: "1.1.1.1"
+    )
+
+    let result = await AccessibilityChannel.defaultBounceRegionInPlace(
+        runtime: fixture.runtime,
+        executeScript: { _ in
+            // Simulate selection being lost post-bounce (AXSelected never
+            // comes back true on anything).
+            fixture.builder.setAttribute(fixture.builder.element(3_000), kAXSelectedAttribute as String, false)
+            return .success("OK")
+        },
+        settle: { }
+    )
+
+    #expect(result.isSuccess)
+    let obj = decodeJSON(result.message)
+    #expect((obj["success"] as? Bool) == false)
+    #expect(obj["reason"] as? String == "readback_unavailable")
+}
+
+@Test func testBounceRegionReturnsStateBWhenStillMidiAfterBounce() async {
+    // Bounce "succeeded" (no script error) but the region is still MIDI
+    // post-settle — Logic didn't actually convert it. State B
+    // readback_mismatch, never silently reported as success.
+    let help = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., MIDI 리전."
+    let fixture = makeRegionFixture(
+        headers: [(axPoint(0, 100), axSize(200, 40))],
+        regions: [(
+            name: "RegionA", help: help, pos: axPoint(240, 108), size: axSize(320, 24), selected: true
+        )],
+        playheadPosition: "1.1.1.1"
+    )
+
+    let result = await AccessibilityChannel.defaultBounceRegionInPlace(
+        runtime: fixture.runtime,
+        executeScript: { _ in .success("OK") },
+        settle: { }
+    )
+
+    #expect(result.isSuccess)
+    let obj = decodeJSON(result.message)
+    #expect((obj["success"] as? Bool) == false)
+    #expect(obj["reason"] as? String == "readback_mismatch")
+    #expect(obj["post_kind"] as? String == "midi")
+}
+
+@Test func testBounceRegionReturnsStateCOnKeystrokeError() async {
+    let help = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., MIDI 리전."
+    let fixture = makeRegionFixture(
+        headers: [(axPoint(0, 100), axSize(200, 40))],
+        regions: [(
+            name: "RegionA", help: help, pos: axPoint(240, 108), size: axSize(320, 24), selected: true
+        )],
+        playheadPosition: "1.1.1.1"
+    )
+
+    let result = await AccessibilityChannel.defaultBounceRegionInPlace(
+        runtime: fixture.runtime,
+        executeScript: { _ in .success("KEYSTROKE_ERROR: System Events is not enabled") },
+        settle: { }
+    )
+
+    guard case .error(let message) = result else {
+        Issue.record("expected .error, got \(result)")
+        return
+    }
+    #expect(message.contains("ax_write_failed"))
+}

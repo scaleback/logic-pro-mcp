@@ -675,6 +675,8 @@ package actor AccessibilityChannel: AccessibilityChannelProtocol {
             return await AccessibilityChannel.defaultMoveSelectedRegionToPlayhead(runtime: runtime.logicRuntime)
         case "region.select_last":
             return await AccessibilityChannel.defaultSelectLastRegion(runtime: runtime.logicRuntime)
+        case "region.bounce":
+            return await AccessibilityChannel.defaultBounceRegionInPlace(runtime: runtime.logicRuntime)
         case "region.select", "region.loop", "region.set_name", "region.move", "region.resize":
             return .error(HonestContract.encodeStateC(
                 error: .notImplemented,

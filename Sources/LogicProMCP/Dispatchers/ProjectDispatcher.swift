@@ -14,7 +14,7 @@ struct ProjectDispatcher: OperationTraceDispatching {
 
     static let tool = commandTool(
         name: "logic_project",
-        description: "Project lifecycle + read-only project state in Logic Pro. Commands: new, open, save, save_as, close, bounce, is_running, launch, quit, get_regions, select_last_region, move_region_to_playhead, export_plan, export_run, export_resume, audit, cleanup_plan, cleanup_apply. Params: open -> { path: String }; save_as -> { path: String }; close -> { saving?: \"yes\"|\"no\"|\"ask\" }; bounce/launch/quit -> {}; bounce requires confirmation and runs a pre-bounce project audit, returning `export_readiness_blocked` before opening the Bounce dialog if blockers such as `external_midi_regions_bounce_risk` are present; get_regions -> {} (returns { regions: [{ name, trackIndex, startBar, endBar, kind, rawHelp }], complete, scope, reason, returned_count }; Logic AX currently reports scope=visible_arrange_area and complete=false); select_last_region -> {} (locates and selects the most recently created region via AX position heuristics; State A when the selected region afterward matches the located one, State B otherwise); move_region_to_playhead -> {} (Edit > Move > To Playhead on the currently selected region; State A when its start bar lands on the playhead within ±1 bar, State B on a no-op, unexpected landing spot, or no region was selected beforehand — always send select_last_region or region.get_regions selection first to know what you're moving); export_plan -> { projects: [absolute .logicx], output_root: String, artifacts?: [bounce|stem|preview|variant], collision_policy?: fail_if_exists|skip_existing } dry-run only; export_run -> { ...same as export_plan, confirmed: Bool } GUARDED execution (re-plans, opens, verifies project identity by readback, bounces, verifies each artifact on disk via logic_audio, records logic_pro_mcp_export_run.v1 with HC State A/B/C; never overwrites under fail_if_exists); export_resume -> { ...same as export_run } idempotent resume (skips already-present+verified artifacts, produces the rest); audit -> read-only project/session audit JSON; cleanup_plan -> read-only serializable cleanup plan JSON; cleanup_apply -> { step_id: String, confirmed: Bool, names?: \"newA,newB\" (CSV aligned to the step's target track indices) | new_name?: String (single target) } executes ONE supported mutating cleanup-plan step (currently rename_* only) through the existing track.rename path so it inherits AX readback + Honest Contract State A/B/C. Fails closed (State C) when confirmed!=true, the step is unknown/unsupported/non-mutating, the audit shows stale/occluded inventory or a track readback gap, or rename names are missing/mismatched. Deletion steps are unsupported by construction and are always refused; others -> {}.",
+        description: "Project lifecycle + read-only project state in Logic Pro. Commands: new, open, save, save_as, close, bounce, is_running, launch, quit, get_regions, select_last_region, move_region_to_playhead, bounce_region, export_plan, export_run, export_resume, audit, cleanup_plan, cleanup_apply. Params: open -> { path: String }; save_as -> { path: String }; close -> { saving?: \"yes\"|\"no\"|\"ask\" }; bounce/launch/quit -> {}; bounce requires confirmation and runs a pre-bounce project audit, returning `export_readiness_blocked` before opening the Bounce dialog if blockers such as `external_midi_regions_bounce_risk` are present; get_regions -> {} (returns { regions: [{ name, trackIndex, startBar, endBar, kind, rawHelp }], complete, scope, reason, returned_count }; Logic AX currently reports scope=visible_arrange_area and complete=false); select_last_region -> {} (locates and selects the most recently created region via AX position heuristics; State A when the selected region afterward matches the located one, State B otherwise); move_region_to_playhead -> {} (Edit > Move > To Playhead on the currently selected region; State A when its start bar lands on the playhead within ±1 bar, State B on a no-op, unexpected landing spot, or no region was selected beforehand — always send select_last_region or region.get_regions selection first to know what you're moving); bounce_region -> { confirmed: Bool } bounces the CURRENTLY SELECTED region in place (MIDI -> audio, same position) — requires confirmation and a region already selected (State C element_not_found otherwise, or invalid_params if it's already audio); State A when the selected region afterward is audio at the same track/bar (±1), State B on no selection post-action or an unexpected result — unlike logic_edit.bounce_in_place this always knows and verifies which region it acted on; export_plan -> { projects: [absolute .logicx], output_root: String, artifacts?: [bounce|stem|preview|variant], collision_policy?: fail_if_exists|skip_existing } dry-run only; export_run -> { ...same as export_plan, confirmed: Bool } GUARDED execution (re-plans, opens, verifies project identity by readback, bounces, verifies each artifact on disk via logic_audio, records logic_pro_mcp_export_run.v1 with HC State A/B/C; never overwrites under fail_if_exists); export_resume -> { ...same as export_run } idempotent resume (skips already-present+verified artifacts, produces the rest); audit -> read-only project/session audit JSON; cleanup_plan -> read-only serializable cleanup plan JSON; cleanup_apply -> { step_id: String, confirmed: Bool, names?: \"newA,newB\" (CSV aligned to the step's target track indices) | new_name?: String (single target) } executes ONE supported mutating cleanup-plan step (currently rename_* only) through the existing track.rename path so it inherits AX readback + Honest Contract State A/B/C. Fails closed (State C) when confirmed!=true, the step is unknown/unsupported/non-mutating, the audit shows stale/occluded inventory or a track readback gap, or rename names are missing/mismatched. Deletion steps are unsupported by construction and are always refused; others -> {}.",
         commandDescription: "Project command to execute"
     )
 
@@ -423,6 +423,38 @@ struct ProjectDispatcher: OperationTraceDispatching {
                 await routedTextResult(router, operation: "region.move_to_playhead")
             }
             return await finalizeTrace(result, traceID: traceID)
+
+        case "bounce_region":
+            // Batuta (Fase 3, tarea #21): unlike edit.bounce_in_place, this
+            // requires an actual selected region (fails closed otherwise, see
+            // defaultBounceRegionInPlace) and verifies via AX readback — but
+            // it's still a real MIDI→audio data transformation, so it stays
+            // confirmation-gated (ConfirmationPolicy.l2) like project.bounce,
+            // just without project.bounce's export-readiness preflight (that
+            // check is about whole-project export risk, not a single
+            // in-place region bounce).
+            let traceID = await startTraceIfEnabled(command: command)
+            let confirmation = destructiveConfirmation(for: command)
+            if let error = confirmation.error {
+                return await finalizeTrace(error, traceID: traceID)
+            }
+            if !confirmation.confirmed, let response = DestructivePolicy.confirmationResponse(command: command) {
+                audit(command, phase: .confirmationRequired)
+                return await finalizeTrace(toolTextResult(response), traceID: traceID)
+            }
+            if dialogPresent() {
+                audit(command, phase: .rejected, reason: "blocking dialog")
+                return await finalizeTrace(
+                    blockingLogicDialogResult(operation: "region.bounce"),
+                    traceID: traceID
+                )
+            }
+            audit(command, phase: .executed)
+            let result = await withWriteBoundaryArmed(traceID) {
+                await router.route(operation: "region.bounce")
+            }
+            await refreshRegionCache(from: result, cache: cache)
+            return await finalizeTrace(toolTextResult(result), traceID: traceID)
 
         case "audit":
             let report = await ProjectSessionAudit.buildAudit(

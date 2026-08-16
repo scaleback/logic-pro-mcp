@@ -266,6 +266,7 @@ extension ChannelRouter {
         // + transport.goto_position bar=1 before import).
         "region.select_last":         [.accessibility],
         "region.move_to_playhead":    [.accessibility],
+        "region.bounce":              [.accessibility],
         "region.loop":                [.accessibility, .cgEvent],
         "region.set_name":            [.accessibility],
         "region.move":                [.accessibility],

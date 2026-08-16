@@ -186,8 +186,8 @@ extension OperationTraceTests {
         let mutatingSpecs = OperationRegistry.specs.filter {
             $0.mutability == Mutability.`mutating`
         }
-        #expect(OperationRegistry.specs.count == 112)
-        #expect(mutatingSpecs.count == 89)
+        #expect(OperationRegistry.specs.count == 113)
+        #expect(mutatingSpecs.count == 90)
 
         // A mutating op that refuses BEFORE dispatch starts its trace (the
         // consent-first setup_arm_key, #413) starts no trace with the coverage
@@ -297,9 +297,9 @@ extension OperationTraceTests {
 
         let readOnlySpecs = OperationRegistry.specs.filter { $0.mutability == .readOnly }
         let mutatingSpecs = OperationRegistry.specs.filter { $0.mutability == Mutability.`mutating` }
-        #expect(OperationRegistry.specs.count == 112)
+        #expect(OperationRegistry.specs.count == 113)
         #expect(readOnlySpecs.count == 23)
-        // Mutability is total: the mutating census (87) and this inverse gate
+        // Mutability is total: the mutating census (90) and this inverse gate
         // (23) together account for every registered spec, so a new operation
         // cannot land outside both gates.
         #expect(readOnlySpecs.count + mutatingSpecs.count == OperationRegistry.specs.count)
@@ -702,6 +702,8 @@ private func operationTraceCoverageParams(
     case .projectClose:
         return ["saving": .string("no"), "confirmed": .bool(true)]
     case .projectBounce:
+        return ["confirmed": .bool(false)]
+    case .projectBounceRegion:
         return ["confirmed": .bool(false)]
     case .projectQuit:
         return ["confirmed": .bool(true)]

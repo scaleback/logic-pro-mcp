@@ -74,6 +74,11 @@ enum OperationID: String, CaseIterable, Codable, Sendable, Hashable {
     // found orphaned during the Phase 3 reconnaissance.
     case projectSelectLastRegion = "project.select_last_region"
     case projectMoveRegionToPlayhead = "project.move_region_to_playhead"
+    // Batuta (Fase 3, tarea #21): real bounce-in-place, unlike
+    // edit.bounce_in_place (Fase 3 tarea #19) — requires a selected region
+    // and verifies via AX readback (midi→audio, same position) rather than
+    // sending the keystroke blind. See AccessibilityChannel+Regions.swift.
+    case projectBounceRegion = "project.bounce_region"
     case projectExportPlan = "project.export_plan"
     case projectExportRun = "project.export_run"
     case projectExportResume = "project.export_resume"
@@ -325,6 +330,7 @@ enum OperationRegistry {
             "project.new", "project.open", "project.save", "project.save_as", "project.close",
             "project.bounce", "project.is_running", "project.launch", "project.quit",
             "project.get_regions", "project.select_last_region", "project.move_region_to_playhead",
+            "project.bounce_region",
             "project.export_plan", "project.export_run",
             "project.export_resume", "project.audit", "project.cleanup_plan",
             "project.cleanup_apply",
@@ -380,6 +386,7 @@ enum OperationRegistry {
         ToolID.logicProject.rawValue: [
             "new", "open", "save", "save_as", "close", "bounce", "is_running", "launch",
             "quit", "get_regions", "select_last_region", "move_region_to_playhead",
+            "bounce_region",
             "export_plan", "export_run", "export_resume", "audit",
             "cleanup_plan", "cleanup_apply",
         ],
@@ -797,6 +804,15 @@ enum OperationRegistry {
         // State A on a verified match), so VerificationPolicy.readbackRequired.
         (.projectSelectLastRegion, "select_last_region", Mutability.`mutating`, ConfirmationPolicy.none, VerificationPolicy.readbackRequired, DeadlineClass.short, []),
         (.projectMoveRegionToPlayhead, "move_region_to_playhead", Mutability.`mutating`, ConfirmationPolicy.none, VerificationPolicy.readbackRequired, DeadlineClass.short, []),
+        // Batuta (Fase 3, tarea #21): DOES have a real readback (unlike
+        // edit.bounce_in_place) but still ConfirmationPolicy.l2, matching
+        // project.bounce above — converting MIDI to audio in place is a
+        // real data transformation (the original MIDI region is normally
+        // replaced), not just a selection/position change, so it stays
+        // confirmation-gated even with verification available.
+        // DeadlineClass.long to match project.bounce: real audio rendering
+        // takes longer to settle than an AX write.
+        (.projectBounceRegion, "bounce_region", Mutability.`mutating`, ConfirmationPolicy.l2, VerificationPolicy.readbackRequired, DeadlineClass.long, ["confirmed"]),
         (
             .projectExportPlan,
             "export_plan",

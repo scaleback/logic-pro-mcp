@@ -534,4 +534,121 @@ extension AccessibilityChannel {
         }
     }
 
+    /// Bounce the currently selected region in place (MIDI → audio,
+    /// keeping position), with a real pre/post AX readback — unlike
+    /// `edit.bounce_in_place` (Fase 3 tarea #19), which sends the same
+    /// keystroke blind, with no way to confirm anything happened or to
+    /// even require a region be selected first.
+    ///
+    /// Fails closed before ever touching Logic if no region is selected
+    /// (`elementNotFound`) — this is the improvement over
+    /// `edit.bounce_in_place`, which would fire against whatever Logic's
+    /// current selection happens to be, selected region or not.
+    ///
+    /// Sends the same `Cmd+Option+B` shortcut `edit.bounce_in_place`
+    /// already uses (`CGEventChannel.swift`'s `.cmdOption(11)`) — via a
+    /// simulated System Events keystroke rather than CGEvent directly, to
+    /// stay consistent with this file's existing AppleScript-only region
+    /// operations rather than adding a new cross-channel dependency.
+    ///
+    /// State A path: pre-snapshot the selected region (name/trackIndex/
+    /// startBar/kind), send the keystroke, settle (bounce needs real
+    /// processing time — longer than a selection/position change), then
+    /// re-read the selected region. Logic selects the newly-bounced audio
+    /// region automatically, so State A requires: something is selected,
+    /// its `kind` is `"audio"` (was not, pre-bounce), and its position
+    /// (trackIndex/startBar) roughly matches the original (±1 bar
+    /// tolerance, same as `move_to_playhead`). Anything else — nothing
+    /// selected post-action, still MIDI, or landed somewhere unexpected —
+    /// is State B, never a silently-assumed success.
+    static func defaultBounceRegionInPlace(
+        runtime: AXLogicProElements.Runtime = .production,
+        executeScript: @Sendable (String) async -> ChannelResult = { await AppleScriptChannel.executeAppleScript($0) },
+        settle: @Sendable () async -> Void = { try? await Task.sleep(nanoseconds: 1_500_000_000) }
+    ) async -> ChannelResult {
+        guard let pre = selectedRegionInfo(runtime: runtime) else {
+            return .error(HonestContract.encodeStateC(
+                error: .elementNotFound,
+                hint: "region.bounce: no region is currently selected — select one first "
+                    + "(region.select_last, or click a region in Logic) before bouncing"
+            ))
+        }
+        if pre.kind == "audio" {
+            return .error(HonestContract.encodeStateC(
+                error: .invalidParams,
+                hint: "region.bounce: the selected region ('\(pre.name)') is already audio — "
+                    + "nothing to bounce"
+            ))
+        }
+
+        let logicProAppleScript = LogicProTarget.appleScriptTarget()
+        let script = """
+        \(logicProAppleScript.activateByBundleID)
+        delay 0.1
+        tell application "System Events"
+            tell \(logicProAppleScript.systemEventsProcessTarget)
+                try
+                    keystroke "b" using {command down, option down}
+                    return "OK"
+                on error errMsg
+                    return "KEYSTROKE_ERROR: " & errMsg
+                end try
+            end tell
+        end tell
+        """
+        let result = await executeScript(script)
+        switch result {
+        case .error(let msg):
+            return .error(HonestContract.encodeStateC(
+                error: .axWriteFailed,
+                hint: "region.bounce failed to send the bounce-in-place shortcut: \(msg)"
+            ))
+        case .success(let output):
+            if output.hasPrefix("KEYSTROKE_ERROR") {
+                return .error(HonestContract.encodeStateC(
+                    error: .axWriteFailed,
+                    hint: "region.bounce keystroke failed: \(output)"
+                ))
+            }
+            // Bounce is real audio processing, not a simple AX write —
+            // give Logic meaningfully longer to settle than the 350ms used
+            // for selection/position changes elsewhere in this file.
+            await settle()
+
+            let post = selectedRegionInfo(runtime: runtime)
+            let extrasBase: [String: Any] = [
+                "via": "system_events_keystroke",
+                "pre_name": pre.name,
+                "pre_track_index": pre.trackIndex,
+                "pre_start_bar": pre.startBar,
+                "pre_kind": pre.kind,
+            ]
+
+            guard let post = post else {
+                return .success(HonestContract.encodeStateB(
+                    reason: .readbackUnavailable,
+                    extras: extrasBase.merging(["note": "no selected region after bounce"]) { _, new in new }
+                ))
+            }
+
+            var extras = extrasBase
+            extras["post_name"] = post.name
+            extras["post_track_index"] = post.trackIndex
+            extras["post_start_bar"] = post.startBar
+            extras["post_kind"] = post.kind
+
+            let positionMatches = abs(post.startBar - pre.startBar) <= 1
+                && post.trackIndex == pre.trackIndex
+
+            if post.kind == "audio" && positionMatches {
+                return .success(HonestContract.encodeStateA(extras: extras))
+            }
+
+            return .success(HonestContract.encodeStateB(
+                reason: .readbackMismatch,
+                extras: extras
+            ))
+        }
+    }
+
 }
