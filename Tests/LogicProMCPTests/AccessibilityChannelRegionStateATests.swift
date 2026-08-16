@@ -699,8 +699,13 @@ private func addBounceMenu(
 @Test func testBounceRegionReturnsStateCWhenDisabled() async {
     // Menu item resolves but AXEnabled is false — Logic itself is refusing
     // the action for the current selection (e.g. unsupported region type).
+    // Resolution presses the Edit and Bounce-or-Join parents on the way
+    // down (to force their AX children to populate) — only a press on the
+    // disabled LEAF item itself is the violation this test guards.
     let help = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., MIDI 리전."
     let builder = FakeAXRuntimeBuilder()
+    let bounceMenuItem = addBounceMenu(to: builder, app: builder.element(1_000), enabled: false)
+    let bounceMenuItemID = builder.elementID(bounceMenuItem)
     let fixture = makeRegionFixture(
         builder: builder,
         headers: [(axPoint(0, 100), axSize(200, 40))],
@@ -708,12 +713,13 @@ private func addBounceMenu(
             name: "RegionA", help: help, pos: axPoint(240, 108), size: axSize(320, 24), selected: true
         )],
         playheadPosition: "1.1.1.1",
-        performActionHandler: { _, _ in
-            Issue.record("a disabled menu item should never be pressed")
+        performActionHandler: { element, _ in
+            if builder.elementID(element) == bounceMenuItemID {
+                Issue.record("a disabled menu item should never be pressed")
+            }
             return true
         }
     )
-    addBounceMenu(to: builder, app: builder.element(1_000), enabled: false)
 
     let result = await AccessibilityChannel.defaultBounceRegionInPlace(
         runtime: fixture.runtime,

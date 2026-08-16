@@ -246,6 +246,17 @@ enum AXLocalePolicy {
         itemMode: .prefix
     )
 
+    /// The parent submenu item that has to be resolved (and, live against a
+    /// real Logic Pro process, pressed to force-open) before AX exposes
+    /// "Bounce Regions in Place…" as a descendant at all — an unopened
+    /// Cocoa NSMenu submenu can have zero AX children until something opens
+    /// it once, a distinct wrinkle from the single-level menu paths above.
+    static let bounceOrJoinMenuItem = LabelSet(
+        canonical: "Bounce or Join",
+        variants: [],
+        rationale: "Parent submenu of Bounce Regions in Place…; must be opened once before its children are AX-visible."
+    )
+
     /// What the Edit-menu Undo entry says when the thing on top of the stack is a plug-in insert.
     ///
     /// The rollback path matched only the "Undo" prefix, so it pressed whatever was on top. Measured

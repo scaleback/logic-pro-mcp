@@ -585,18 +585,54 @@ extension AccessibilityChannel {
             ))
         }
 
-        guard let menuBar = AXLogicProElements.getMenuBar(runtime: runtime),
-              let editBarItem = AXLocalePolicy.findMenuBarItem(
-                in: menuBar,
-                matching: AXLocalePolicy.bounceRegionsInPlaceMenuPath.bar,
-                runtime: runtime.ax
-              ),
-              let bounceMenuItem = AXLocalePolicy.findMenuItem(
-                under: editBarItem,
-                matching: AXLocalePolicy.bounceRegionsInPlaceMenuPath.item,
-                mode: AXLocalePolicy.bounceRegionsInPlaceMenuPath.itemMode,
-                runtime: runtime.ax
-              ) else {
+        guard let menuBar = AXLogicProElements.getMenuBar(runtime: runtime) else {
+            return .error(HonestContract.encodeStateC(
+                error: .elementNotFound,
+                hint: "region.bounce: Logic's menu bar was not found"
+            ))
+        }
+        guard let editBarItem = AXLocalePolicy.findMenuBarItem(
+            in: menuBar,
+            matching: AXLocalePolicy.editMenuBar,
+            runtime: runtime.ax
+        ) else {
+            return .error(HonestContract.encodeStateC(
+                error: .elementNotFound,
+                hint: "region.bounce: the Edit menu bar item was not found"
+            ))
+        }
+
+        // An unopened Cocoa NSMenu submenu can report zero AX children until
+        // something opens it once — live testing (2026-08-16) found the
+        // single recursive lookup this used before came back empty for the
+        // Bounce or Join submenu specifically. Press each parent along the
+        // path (mirroring a real user clicking Edit > Bounce or Join) before
+        // searching under it, rather than assuming one lookup sees the whole
+        // tree. Known gap: if resolution fails partway after a parent press,
+        // this can leave that submenu open on screen — no data-safety risk,
+        // but worth an Escape-key cleanup in a follow-up if it proves noisy
+        // in practice.
+        _ = AXHelpers.performAction(editBarItem, kAXPressAction, runtime: runtime.ax)
+
+        guard let bounceOrJoinItem = AXLocalePolicy.findMenuItem(
+            under: editBarItem,
+            matching: AXLocalePolicy.bounceOrJoinMenuItem,
+            runtime: runtime.ax
+        ) else {
+            return .error(HonestContract.encodeStateC(
+                error: .elementNotFound,
+                hint: "region.bounce: Edit > Bounce or Join was not found"
+            ))
+        }
+
+        _ = AXHelpers.performAction(bounceOrJoinItem, kAXPressAction, runtime: runtime.ax)
+
+        guard let bounceMenuItem = AXLocalePolicy.findMenuItem(
+            under: bounceOrJoinItem,
+            matching: AXLocalePolicy.bounceRegionsInPlaceMenuPath.item,
+            mode: AXLocalePolicy.bounceRegionsInPlaceMenuPath.itemMode,
+            runtime: runtime.ax
+        ) else {
             return .error(HonestContract.encodeStateC(
                 error: .elementNotFound,
                 hint: "region.bounce: Edit > Bounce or Join > Bounce Regions in Place… was not found"
