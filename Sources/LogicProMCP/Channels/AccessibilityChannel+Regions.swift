@@ -536,23 +536,28 @@ extension AccessibilityChannel {
 
     /// Bounce the currently selected region in place (MIDI → audio,
     /// keeping position), with a real pre/post AX readback — unlike
-    /// `edit.bounce_in_place` (Fase 3 tarea #19), which sends the same
-    /// keystroke blind, with no way to confirm anything happened or to
-    /// even require a region be selected first.
+    /// `edit.bounce_in_place` (Fase 3 tarea #19), which sends a keystroke
+    /// blind, with no way to confirm anything happened or to even require
+    /// a region be selected first.
     ///
     /// Fails closed before ever touching Logic if no region is selected
     /// (`elementNotFound`) — this is the improvement over
     /// `edit.bounce_in_place`, which would fire against whatever Logic's
     /// current selection happens to be, selected region or not.
     ///
-    /// Sends the same `Cmd+Option+B` shortcut `edit.bounce_in_place`
-    /// already uses (`CGEventChannel.swift`'s `.cmdOption(11)`) — via a
-    /// simulated System Events keystroke rather than CGEvent directly, to
-    /// stay consistent with this file's existing AppleScript-only region
-    /// operations rather than adding a new cross-channel dependency.
+    /// Presses Edit > Bounce or Join > Bounce Regions in Place… via AX
+    /// (`AXLocalePolicy.bounceRegionsInPlaceMenuPath` + `kAXPressAction`)
+    /// rather than sending the `Cmd+Option+B` keystroke
+    /// `edit.bounce_in_place` uses. Live testing on 2026-08-16 found that
+    /// keystroke unreliable: it depends on that exact chord being bound in
+    /// the user's own Key Commands set, and in the session that surfaced
+    /// this, it was NOT bound — both the tool and the user pressing it
+    /// directly on the keyboard produced only the macOS "invalid key
+    /// command" screen flash, never a bounce. The menu item itself has no
+    /// such dependency.
     ///
     /// State A path: pre-snapshot the selected region (name/trackIndex/
-    /// startBar/kind), send the keystroke, settle (bounce needs real
+    /// startBar/kind), press the menu item, settle (bounce needs real
     /// processing time — longer than a selection/position change), then
     /// re-read the selected region. Logic selects the newly-bounced audio
     /// region automatically, so State A requires: something is selected,
@@ -563,7 +568,6 @@ extension AccessibilityChannel {
     /// is State B, never a silently-assumed success.
     static func defaultBounceRegionInPlace(
         runtime: AXLogicProElements.Runtime = .production,
-        executeScript: @Sendable (String) async -> ChannelResult = { await AppleScriptChannel.executeAppleScript($0) },
         settle: @Sendable () async -> Void = { try? await Task.sleep(nanoseconds: 1_500_000_000) }
     ) async -> ChannelResult {
         guard let pre = selectedRegionInfo(runtime: runtime) else {
@@ -581,74 +585,81 @@ extension AccessibilityChannel {
             ))
         }
 
-        let logicProAppleScript = LogicProTarget.appleScriptTarget()
-        let script = """
-        \(logicProAppleScript.activateByBundleID)
-        delay 0.1
-        tell application "System Events"
-            tell \(logicProAppleScript.systemEventsProcessTarget)
-                try
-                    keystroke "b" using {command down, option down}
-                    return "OK"
-                on error errMsg
-                    return "KEYSTROKE_ERROR: " & errMsg
-                end try
-            end tell
-        end tell
-        """
-        let result = await executeScript(script)
-        switch result {
-        case .error(let msg):
+        guard let menuBar = AXLogicProElements.getMenuBar(runtime: runtime),
+              let editBarItem = AXLocalePolicy.findMenuBarItem(
+                in: menuBar,
+                matching: AXLocalePolicy.bounceRegionsInPlaceMenuPath.bar,
+                runtime: runtime.ax
+              ),
+              let bounceMenuItem = AXLocalePolicy.findMenuItem(
+                under: editBarItem,
+                matching: AXLocalePolicy.bounceRegionsInPlaceMenuPath.item,
+                mode: AXLocalePolicy.bounceRegionsInPlaceMenuPath.itemMode,
+                runtime: runtime.ax
+              ) else {
             return .error(HonestContract.encodeStateC(
-                error: .axWriteFailed,
-                hint: "region.bounce failed to send the bounce-in-place shortcut: \(msg)"
-            ))
-        case .success(let output):
-            if output.hasPrefix("KEYSTROKE_ERROR") {
-                return .error(HonestContract.encodeStateC(
-                    error: .axWriteFailed,
-                    hint: "region.bounce keystroke failed: \(output)"
-                ))
-            }
-            // Bounce is real audio processing, not a simple AX write —
-            // give Logic meaningfully longer to settle than the 350ms used
-            // for selection/position changes elsewhere in this file.
-            await settle()
-
-            let post = selectedRegionInfo(runtime: runtime)
-            let extrasBase: [String: Any] = [
-                "via": "system_events_keystroke",
-                "pre_name": pre.name,
-                "pre_track_index": pre.trackIndex,
-                "pre_start_bar": pre.startBar,
-                "pre_kind": pre.kind,
-            ]
-
-            guard let post = post else {
-                return .success(HonestContract.encodeStateB(
-                    reason: .readbackUnavailable,
-                    extras: extrasBase.merging(["note": "no selected region after bounce"]) { _, new in new }
-                ))
-            }
-
-            var extras = extrasBase
-            extras["post_name"] = post.name
-            extras["post_track_index"] = post.trackIndex
-            extras["post_start_bar"] = post.startBar
-            extras["post_kind"] = post.kind
-
-            let positionMatches = abs(post.startBar - pre.startBar) <= 1
-                && post.trackIndex == pre.trackIndex
-
-            if post.kind == "audio" && positionMatches {
-                return .success(HonestContract.encodeStateA(extras: extras))
-            }
-
-            return .success(HonestContract.encodeStateB(
-                reason: .readbackMismatch,
-                extras: extras
+                error: .elementNotFound,
+                hint: "region.bounce: Edit > Bounce or Join > Bounce Regions in Place… was not found"
             ))
         }
+
+        let enabled: NSNumber? = AXHelpers.getAttribute(
+            bounceMenuItem,
+            kAXEnabledAttribute,
+            runtime: runtime.ax
+        )
+        guard enabled?.boolValue != false else {
+            return .error(HonestContract.encodeStateC(
+                error: .invalidParams,
+                hint: "region.bounce: Bounce Regions in Place… is disabled for the current selection"
+            ))
+        }
+
+        guard AXHelpers.performAction(bounceMenuItem, kAXPressAction, runtime: runtime.ax) else {
+            return .error(HonestContract.encodeStateC(
+                error: .axWriteFailed,
+                hint: "region.bounce: AXPress failed on Bounce Regions in Place…"
+            ))
+        }
+
+        // Bounce is real audio processing, not a simple AX write — give
+        // Logic meaningfully longer to settle than the 350ms used for
+        // selection/position changes elsewhere in this file.
+        await settle()
+
+        let post = selectedRegionInfo(runtime: runtime)
+        let extrasBase: [String: Any] = [
+            "via": "ax_menu_press",
+            "pre_name": pre.name,
+            "pre_track_index": pre.trackIndex,
+            "pre_start_bar": pre.startBar,
+            "pre_kind": pre.kind,
+        ]
+
+        guard let post = post else {
+            return .success(HonestContract.encodeStateB(
+                reason: .readbackUnavailable,
+                extras: extrasBase.merging(["note": "no selected region after bounce"]) { _, new in new }
+            ))
+        }
+
+        var extras = extrasBase
+        extras["post_name"] = post.name
+        extras["post_track_index"] = post.trackIndex
+        extras["post_start_bar"] = post.startBar
+        extras["post_kind"] = post.kind
+
+        let positionMatches = abs(post.startBar - pre.startBar) <= 1
+            && post.trackIndex == pre.trackIndex
+
+        if post.kind == "audio" && positionMatches {
+            return .success(HonestContract.encodeStateA(extras: extras))
+        }
+
+        return .success(HonestContract.encodeStateB(
+            reason: .readbackMismatch,
+            extras: extras
+        ))
     }
 
 }
