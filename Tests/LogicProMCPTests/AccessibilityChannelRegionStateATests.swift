@@ -464,9 +464,72 @@ private func makeRegionFixture(
 
 // MARK: - region.bounce — State A/B/C paths
 
+/// Adds one more fake track header to the fixture's header rail, simulating
+/// the real Logic behavior a bounce triggers: a brand-new track appears
+/// (`allTrackHeaders(runtime:).count` grows by one). `makeRegionFixture`
+/// builds the header rail at element 1_002 with headers at 2_000+idx — this
+/// stays out of that range.
+private func addFakeTrackHeader(to builder: FakeAXRuntimeBuilder, existingHeaderCount: Int) {
+    let headerRail = builder.element(1_002)
+    let newHeader = builder.element(2_999)
+    builder.setAttribute(newHeader, kAXRoleAttribute as String, kAXLayoutItemRole as String)
+    builder.setAttribute(newHeader, kAXPositionAttribute as String, axPoint(0, 999))
+    builder.setAttribute(newHeader, kAXSizeAttribute as String, axSize(200, 40))
+    let existing = (0..<existingHeaderCount).map { builder.element(2_000 + $0) }
+    builder.setChildren(headerRail, existing + [newHeader])
+}
+
 @Test func testBounceRegionReturnsStateAOnAudioMatch() async {
-    // Pre: selected MIDI region at bar 1-3. Bounce rewrites it to "audio" at
-    // the same bar range (in-place, same position) → State A verified:true.
+    // Pre: selected MIDI region at bar 1-3, one track. Bounce creates a new
+    // track (real Logic behavior: Destination "New Track" by default) whose
+    // auto-selected region reads "audio" at the same bar range → State A
+    // verified:true. NOT the same trackIndex — this flow never produces
+    // that; track count growing by exactly one is the load-bearing signal.
+    let preHelp = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., MIDI 리전."
+    let postHelp = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., 오디오 리전."
+
+    let fixture = makeRegionFixture(
+        headers: [(axPoint(0, 100), axSize(200, 40))],
+        regions: [(
+            name: "RegionA",
+            help: preHelp,
+            pos: axPoint(240, 108),
+            size: axSize(320, 24),
+            selected: true
+        )],
+        playheadPosition: "1.1.1.1"
+    )
+
+    let result = await AccessibilityChannel.defaultBounceRegionInPlace(
+        runtime: fixture.runtime,
+        executeScript: { _ in
+            addFakeTrackHeader(to: fixture.builder, existingHeaderCount: 1)
+            fixture.builder.setAttribute(
+                fixture.builder.element(3_000),
+                kAXHelpAttribute as String,
+                postHelp
+            )
+            return .success("OK_CONFIRMED")
+        },
+        settle: { /* skip in tests */ }
+    )
+
+    #expect(result.isSuccess)
+    let obj = decodeJSON(result.message)
+    #expect((obj["success"] as? Bool)!)
+    #expect((obj["verified"] as? Bool)!)
+    #expect(obj["pre_kind"] as? String == "midi")
+    #expect(obj["post_kind"] as? String == "audio")
+    #expect(obj["pre_start_bar"] as? Int == 1)
+    #expect(obj["post_start_bar"] as? Int == 1)
+    #expect(obj["pre_track_count"] as? Int == 1)
+    #expect(obj["post_track_count"] as? Int == 2)
+}
+
+@Test func testBounceRegionReturnsStateBWhenNoNewTrackDespiteAudioKind() async {
+    // Kind flipped to "audio" but track count stayed put — the AND gate
+    // (trackCreated && kind == audio && positionMatches) must not pass on
+    // kind alone, since a real bounce always adds a track.
     let preHelp = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., MIDI 리전."
     let postHelp = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., 오디오 리전."
 
@@ -490,19 +553,17 @@ private func makeRegionFixture(
                 kAXHelpAttribute as String,
                 postHelp
             )
-            return .success("OK")
+            return .success("OK_CONFIRMED")
         },
-        settle: { /* skip in tests */ }
+        settle: { }
     )
 
     #expect(result.isSuccess)
     let obj = decodeJSON(result.message)
-    #expect((obj["success"] as? Bool)!)
-    #expect((obj["verified"] as? Bool)!)
-    #expect(obj["pre_kind"] as? String == "midi")
-    #expect(obj["post_kind"] as? String == "audio")
-    #expect(obj["pre_start_bar"] as? Int == 1)
-    #expect(obj["post_start_bar"] as? Int == 1)
+    #expect((obj["success"] as? Bool) == false)
+    #expect(obj["reason"] as? String == "readback_mismatch")
+    #expect(obj["pre_track_count"] as? Int == 1)
+    #expect(obj["post_track_count"] as? Int == 1)
 }
 
 @Test func testBounceRegionFailsClosedWhenNothingSelected() async {

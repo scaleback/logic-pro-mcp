@@ -534,8 +534,8 @@ extension AccessibilityChannel {
         }
     }
 
-    /// Bounce the currently selected region in place (MIDI → audio,
-    /// keeping position), with a real pre/post AX readback — unlike
+    /// Bounce the currently selected region in place (MIDI → audio, same
+    /// bar position), with a real pre/post AX readback — unlike
     /// `edit.bounce_in_place` (Fase 3 tarea #19), which sends the same
     /// keystroke blind, with no way to confirm anything happened or to
     /// even require a region be selected first.
@@ -558,22 +558,31 @@ extension AccessibilityChannel {
     /// the Edit menu's AX tree during a REAL menu-tracking session, so a
     /// synthetic `kAXPressAction` on the Edit bar item opened only the
     /// static prefix (Undo/Cut/Copy/Paste/Delete/Select) and never
-    /// populated "Bounce or Join" at all — confirmed live via a diagnostic
-    /// dump of Edit's menu-item titles before reverting to this keystroke.
-    /// `edit.bounce_in_place`'s own `CGEventChannel.cmdOption(11)` mapping
-    /// carries the exact same wrong chord — worth fixing there too, tracked
-    /// separately since this function doesn't call that path.
+    /// populated "Bounce or Join" at all. `edit.bounce_in_place`'s own
+    /// `CGEventChannel.cmdOption(11)` mapping carries the exact same wrong
+    /// chord — worth fixing there too, tracked separately since this
+    /// function doesn't call that path.
     ///
-    /// State A path: pre-snapshot the selected region (name/trackIndex/
-    /// startBar/kind), send the keystroke, settle (bounce needs real
-    /// processing time — longer than a selection/position change), then
-    /// re-read the selected region. Logic selects the newly-bounced audio
-    /// region automatically, so State A requires: something is selected,
-    /// its `kind` is `"audio"` (was not, pre-bounce), and its position
-    /// (trackIndex/startBar) roughly matches the original (±1 bar
-    /// tolerance, same as `move_to_playhead`). Anything else — nothing
-    /// selected post-action, still MIDI, or landed somewhere unexpected —
-    /// is State B, never a silently-assumed success.
+    /// The correct chord opens a "Bounce Regions In Place" dialog (Name /
+    /// Destination / Source / Normalize, etc.) rather than acting
+    /// instantly — confirmed live 2026-08-17. This function clicks its OK
+    /// button (default: Destination "New Track", Source "Mute") inside the
+    /// same AppleScript round-trip, best-effort — its outcome rides along
+    /// in `extras.dialog_confirm` for diagnosis but never gates the result,
+    /// since the readback below is the real source of truth either way.
+    ///
+    /// Also confirmed live: with those defaults, "in place" describes the
+    /// TIME position, not the track. Logic creates a brand-new track
+    /// holding the bounced audio region (track count +1) and mutes the
+    /// original MIDI region on its original track rather than converting
+    /// it — it does not reuse `pre.trackIndex`. So State A requires: track
+    /// count grew by exactly one, the newly auto-selected region's `kind`
+    /// is `"audio"`, and its bar position matches the original within ±1
+    /// bar (same tolerance as `move_to_playhead`) — NOT the same
+    /// trackIndex, which this flow never produces. Anything else —
+    /// nothing selected post-action, no new track, still MIDI, or landed
+    /// somewhere unexpected — is State B, never a silently-assumed
+    /// success.
     static func defaultBounceRegionInPlace(
         runtime: AXLogicProElements.Runtime = .production,
         executeScript: @Sendable (String) async -> ChannelResult = { await AppleScriptChannel.executeAppleScript($0) },
@@ -594,6 +603,8 @@ extension AccessibilityChannel {
             ))
         }
 
+        let preTrackCount = AXLogicProElements.allTrackHeaders(runtime: runtime).count
+
         let logicProAppleScript = LogicProTarget.appleScriptTarget()
         let script = """
         \(logicProAppleScript.activateByBundleID)
@@ -602,9 +613,18 @@ extension AccessibilityChannel {
             tell \(logicProAppleScript.systemEventsProcessTarget)
                 try
                     keystroke "b" using {control down}
-                    return "OK"
                 on error errMsg
                     return "KEYSTROKE_ERROR: " & errMsg
+                end try
+                delay 0.6
+                try
+                    if not (exists sheet 1 of window 1) then
+                        return "OK_NO_SHEET"
+                    end if
+                    click button "OK" of sheet 1 of window 1
+                    return "OK_CONFIRMED"
+                on error errMsg2
+                    return "OK_CONFIRM_ERROR: " & errMsg2
                 end try
             end tell
         end tell
@@ -628,13 +648,17 @@ extension AccessibilityChannel {
             // for selection/position changes elsewhere in this file.
             await settle()
 
+            let postTrackCount = AXLogicProElements.allTrackHeaders(runtime: runtime).count
             let post = selectedRegionInfo(runtime: runtime)
             let extrasBase: [String: Any] = [
                 "via": "system_events_keystroke",
+                "dialog_confirm": output,
                 "pre_name": pre.name,
                 "pre_track_index": pre.trackIndex,
                 "pre_start_bar": pre.startBar,
                 "pre_kind": pre.kind,
+                "pre_track_count": preTrackCount,
+                "post_track_count": postTrackCount,
             ]
 
             guard let post = post else {
@@ -650,10 +674,10 @@ extension AccessibilityChannel {
             extras["post_start_bar"] = post.startBar
             extras["post_kind"] = post.kind
 
+            let trackCreated = postTrackCount == preTrackCount + 1
             let positionMatches = abs(post.startBar - pre.startBar) <= 1
-                && post.trackIndex == pre.trackIndex
 
-            if post.kind == "audio" && positionMatches {
+            if trackCreated && post.kind == "audio" && positionMatches {
                 return .success(HonestContract.encodeStateA(extras: extras))
             }
 
