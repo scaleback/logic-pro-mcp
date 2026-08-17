@@ -615,7 +615,7 @@ extension AccessibilityChannel {
         // resolution fails partway after a parent press, this can leave
         // that submenu open on screen — no data-safety risk, but worth an
         // Escape-key cleanup in a follow-up if it proves noisy in practice.
-        _ = AXHelpers.performAction(editBarItem, kAXPressAction, runtime: runtime.ax)
+        let editPressed = AXHelpers.performAction(editBarItem, kAXPressAction, runtime: runtime.ax)
         await menuOpenSettle()
 
         guard let bounceOrJoinItem = AXLocalePolicy.findMenuItem(
@@ -623,13 +623,30 @@ extension AccessibilityChannel {
             matching: AXLocalePolicy.bounceOrJoinMenuItem,
             runtime: runtime.ax
         ) else {
+            // Diagnostic-enriched: two prior live attempts (single lookup,
+            // then press-then-settle) both failed here with no way to tell
+            // WHY — whether Edit's own children never populated at all, or
+            // populated but without "Bounce or Join" specifically matching.
+            // Report both raw counts and titles so the next fix is grounded
+            // in what AX actually returned, not another guess.
+            let directChildren = AXHelpers.getChildren(editBarItem, runtime: runtime.ax)
+            let menuItems = AXHelpers.findAllDescendants(
+                of: editBarItem, role: kAXMenuItemRole as String, maxDepth: 5, runtime: runtime.ax
+            )
+            let titles = menuItems.prefix(40).compactMap { AXHelpers.getTitle($0, runtime: runtime.ax) }
             return .error(HonestContract.encodeStateC(
                 error: .elementNotFound,
-                hint: "region.bounce: Edit > Bounce or Join was not found"
+                hint: "region.bounce: Edit > Bounce or Join was not found",
+                extras: [
+                    "edit_press_returned": editPressed,
+                    "edit_direct_child_count": directChildren.count,
+                    "edit_menu_item_count": menuItems.count,
+                    "edit_menu_item_titles": titles.joined(separator: " | "),
+                ]
             ))
         }
 
-        _ = AXHelpers.performAction(bounceOrJoinItem, kAXPressAction, runtime: runtime.ax)
+        let bounceOrJoinPressed = AXHelpers.performAction(bounceOrJoinItem, kAXPressAction, runtime: runtime.ax)
         await menuOpenSettle()
 
         guard let bounceMenuItem = AXLocalePolicy.findMenuItem(
@@ -638,9 +655,18 @@ extension AccessibilityChannel {
             mode: AXLocalePolicy.bounceRegionsInPlaceMenuPath.itemMode,
             runtime: runtime.ax
         ) else {
+            let menuItems = AXHelpers.findAllDescendants(
+                of: bounceOrJoinItem, role: kAXMenuItemRole as String, maxDepth: 5, runtime: runtime.ax
+            )
+            let titles = menuItems.prefix(40).compactMap { AXHelpers.getTitle($0, runtime: runtime.ax) }
             return .error(HonestContract.encodeStateC(
                 error: .elementNotFound,
-                hint: "region.bounce: Edit > Bounce or Join > Bounce Regions in Place… was not found"
+                hint: "region.bounce: Edit > Bounce or Join > Bounce Regions in Place… was not found",
+                extras: [
+                    "bounce_or_join_press_returned": bounceOrJoinPressed,
+                    "bounce_or_join_menu_item_count": menuItems.count,
+                    "bounce_or_join_menu_item_titles": titles.joined(separator: " | "),
+                ]
             ))
         }
 
