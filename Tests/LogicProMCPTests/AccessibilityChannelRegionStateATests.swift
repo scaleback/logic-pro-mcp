@@ -32,13 +32,11 @@ private struct RegionFakeFixture {
 }
 
 private func makeRegionFixture(
-    builder externalBuilder: FakeAXRuntimeBuilder? = nil,
     headers: [(pos: AXValue, size: AXValue)],
     regions: [(name: String, help: String, pos: AXValue, size: AXValue, selected: Bool)],
-    playheadPosition: String,
-    performActionHandler: (@Sendable (AXUIElement, String) -> Bool)? = nil
+    playheadPosition: String
 ) -> RegionFakeFixture {
-    let builder = externalBuilder ?? FakeAXRuntimeBuilder()
+    let builder = FakeAXRuntimeBuilder()
     let app = builder.element(1_000)
     let window = builder.element(1_001)
     let headerRail = builder.element(1_002)
@@ -85,49 +83,8 @@ private func makeRegionFixture(
 
     return RegionFakeFixture(
         builder: builder,
-        runtime: builder.makeLogicRuntime(
-            appElement: app,
-            setAttributeHandler: nil,
-            performActionHandler: performActionHandler
-        )
+        runtime: builder.makeLogicRuntime(appElement: app)
     )
-}
-
-/// Adds a fake Edit > Bounce or Join > Bounce Regions in Place… menu tree to
-/// `app`, matching what `defaultBounceRegionInPlace` resolves via
-/// `AXLocalePolicy.bounceRegionsInPlaceMenuPath`. Element IDs are in the
-/// 4_000s range to stay clear of the header (2_000s) and region (3_000s)
-/// ranges `makeRegionFixture` already uses.
-@discardableResult
-private func addBounceMenu(
-    to builder: FakeAXRuntimeBuilder,
-    app: AXUIElement,
-    enabled: Bool = true
-) -> AXUIElement {
-    let menuBar = builder.element(4_000)
-    let editBarItem = builder.element(4_001)
-    let editMenu = builder.element(4_002)
-    let bounceOrJoinItem = builder.element(4_003)
-    let bounceOrJoinSubmenu = builder.element(4_004)
-    let bounceMenuItem = builder.element(4_005)
-
-    builder.setAttribute(editBarItem, kAXTitleAttribute as String, "Edit")
-    builder.setChildren(editBarItem, [editMenu])
-
-    builder.setAttribute(bounceOrJoinItem, kAXRoleAttribute as String, kAXMenuItemRole as String)
-    builder.setAttribute(bounceOrJoinItem, kAXTitleAttribute as String, "Bounce or Join")
-    builder.setChildren(bounceOrJoinItem, [bounceOrJoinSubmenu])
-    builder.setChildren(editMenu, [bounceOrJoinItem])
-
-    builder.setAttribute(bounceMenuItem, kAXRoleAttribute as String, kAXMenuItemRole as String)
-    builder.setAttribute(bounceMenuItem, kAXTitleAttribute as String, "Bounce Regions in Place…")
-    builder.setAttribute(bounceMenuItem, kAXEnabledAttribute as String, enabled)
-    builder.setChildren(bounceOrJoinSubmenu, [bounceMenuItem])
-
-    builder.setChildren(menuBar, [editBarItem])
-    builder.setAttribute(app, kAXMenuBarAttribute as String, menuBar)
-
-    return bounceMenuItem
 }
 
 // MARK: - region.move_to_playhead — State A path
@@ -513,9 +470,7 @@ private func addBounceMenu(
     let preHelp = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., MIDI 리전."
     let postHelp = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., 오디오 리전."
 
-    let builder = FakeAXRuntimeBuilder()
     let fixture = makeRegionFixture(
-        builder: builder,
         headers: [(axPoint(0, 100), axSize(200, 40))],
         regions: [(
             name: "RegionA",
@@ -524,18 +479,20 @@ private func addBounceMenu(
             size: axSize(320, 24),
             selected: true
         )],
-        playheadPosition: "1.1.1.1",
-        performActionHandler: { _, _ in
-            builder.setAttribute(builder.element(3_000), kAXHelpAttribute as String, postHelp)
-            return true
-        }
+        playheadPosition: "1.1.1.1"
     )
-    addBounceMenu(to: builder, app: builder.element(1_000))
 
     let result = await AccessibilityChannel.defaultBounceRegionInPlace(
         runtime: fixture.runtime,
-        settle: { /* skip in tests */ },
-        menuOpenSettle: { }
+        executeScript: { _ in
+            fixture.builder.setAttribute(
+                fixture.builder.element(3_000),
+                kAXHelpAttribute as String,
+                postHelp
+            )
+            return .success("OK")
+        },
+        settle: { /* skip in tests */ }
     )
 
     #expect(result.isSuccess)
@@ -550,25 +507,21 @@ private func addBounceMenu(
 
 @Test func testBounceRegionFailsClosedWhenNothingSelected() async {
     let help = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., MIDI 리전."
-    let builder = FakeAXRuntimeBuilder()
     let fixture = makeRegionFixture(
-        builder: builder,
         headers: [(axPoint(0, 100), axSize(200, 40))],
         regions: [(
             name: "RegionA", help: help, pos: axPoint(240, 108), size: axSize(320, 24), selected: false
         )],
-        playheadPosition: "1.1.1.1",
-        performActionHandler: { _, _ in
-            Issue.record("bounce menu item should never be pressed when nothing is selected")
-            return true
-        }
+        playheadPosition: "1.1.1.1"
     )
-    addBounceMenu(to: builder, app: builder.element(1_000))
 
     let result = await AccessibilityChannel.defaultBounceRegionInPlace(
         runtime: fixture.runtime,
-        settle: { },
-        menuOpenSettle: { }
+        executeScript: { _ in
+            Issue.record("bounce keystroke should never be sent when nothing is selected")
+            return .success("OK")
+        },
+        settle: { }
     )
 
     // State C surfaces as .error at the ChannelResult level, per HonestContract.
@@ -582,25 +535,21 @@ private func addBounceMenu(
 
 @Test func testBounceRegionFailsClosedWhenAlreadyAudio() async {
     let help = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., 오디오 리전."
-    let builder = FakeAXRuntimeBuilder()
     let fixture = makeRegionFixture(
-        builder: builder,
         headers: [(axPoint(0, 100), axSize(200, 40))],
         regions: [(
             name: "RegionA", help: help, pos: axPoint(240, 108), size: axSize(320, 24), selected: true
         )],
-        playheadPosition: "1.1.1.1",
-        performActionHandler: { _, _ in
-            Issue.record("bounce menu item should never be pressed for an already-audio region")
-            return true
-        }
+        playheadPosition: "1.1.1.1"
     )
-    addBounceMenu(to: builder, app: builder.element(1_000))
 
     let result = await AccessibilityChannel.defaultBounceRegionInPlace(
         runtime: fixture.runtime,
-        settle: { },
-        menuOpenSettle: { }
+        executeScript: { _ in
+            Issue.record("bounce keystroke should never be sent for an already-audio region")
+            return .success("OK")
+        },
+        settle: { }
     )
 
     guard case .error(let message) = result else {
@@ -613,27 +562,23 @@ private func addBounceMenu(
 
 @Test func testBounceRegionReturnsStateBWhenSelectionLostAfterBounce() async {
     let preHelp = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., MIDI 리전."
-    let builder = FakeAXRuntimeBuilder()
     let fixture = makeRegionFixture(
-        builder: builder,
         headers: [(axPoint(0, 100), axSize(200, 40))],
         regions: [(
             name: "RegionA", help: preHelp, pos: axPoint(240, 108), size: axSize(320, 24), selected: true
         )],
-        playheadPosition: "1.1.1.1",
-        performActionHandler: { _, _ in
-            // Simulate selection being lost post-bounce (AXSelected never
-            // comes back true on anything).
-            builder.setAttribute(builder.element(3_000), kAXSelectedAttribute as String, false)
-            return true
-        }
+        playheadPosition: "1.1.1.1"
     )
-    addBounceMenu(to: builder, app: builder.element(1_000))
 
     let result = await AccessibilityChannel.defaultBounceRegionInPlace(
         runtime: fixture.runtime,
-        settle: { },
-        menuOpenSettle: { }
+        executeScript: { _ in
+            // Simulate selection being lost post-bounce (AXSelected never
+            // comes back true on anything).
+            fixture.builder.setAttribute(fixture.builder.element(3_000), kAXSelectedAttribute as String, false)
+            return .success("OK")
+        },
+        settle: { }
     )
 
     #expect(result.isSuccess)
@@ -643,26 +588,22 @@ private func addBounceMenu(
 }
 
 @Test func testBounceRegionReturnsStateBWhenStillMidiAfterBounce() async {
-    // Bounce "succeeded" (AXPress returned true) but the region is still
-    // MIDI post-settle — Logic didn't actually convert it. State B
+    // Bounce "succeeded" (no script error) but the region is still MIDI
+    // post-settle — Logic didn't actually convert it. State B
     // readback_mismatch, never silently reported as success.
     let help = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., MIDI 리전."
-    let builder = FakeAXRuntimeBuilder()
     let fixture = makeRegionFixture(
-        builder: builder,
         headers: [(axPoint(0, 100), axSize(200, 40))],
         regions: [(
             name: "RegionA", help: help, pos: axPoint(240, 108), size: axSize(320, 24), selected: true
         )],
-        playheadPosition: "1.1.1.1",
-        performActionHandler: { _, _ in true }
+        playheadPosition: "1.1.1.1"
     )
-    addBounceMenu(to: builder, app: builder.element(1_000))
 
     let result = await AccessibilityChannel.defaultBounceRegionInPlace(
         runtime: fixture.runtime,
-        settle: { },
-        menuOpenSettle: { }
+        executeScript: { _ in .success("OK") },
+        settle: { }
     )
 
     #expect(result.isSuccess)
@@ -672,93 +613,20 @@ private func addBounceMenu(
     #expect(obj["post_kind"] as? String == "midi")
 }
 
-@Test func testBounceRegionReturnsStateCWhenMenuItemNotFound() async {
-    // Edit > Bounce or Join > Bounce Regions in Place… simply isn't in the
-    // AX tree (e.g. Logic version/locale drift) — fails closed before any
-    // press is attempted, distinct from the AXPress-fails case below.
+@Test func testBounceRegionReturnsStateCOnKeystrokeError() async {
     let help = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., MIDI 리전."
-    let builder = FakeAXRuntimeBuilder()
     let fixture = makeRegionFixture(
-        builder: builder,
         headers: [(axPoint(0, 100), axSize(200, 40))],
         regions: [(
             name: "RegionA", help: help, pos: axPoint(240, 108), size: axSize(320, 24), selected: true
         )],
         playheadPosition: "1.1.1.1"
-        // No addBounceMenu call — the menu bar attribute is simply absent.
     )
 
     let result = await AccessibilityChannel.defaultBounceRegionInPlace(
         runtime: fixture.runtime,
-        settle: { },
-        menuOpenSettle: { }
-    )
-
-    guard case .error(let message) = result else {
-        Issue.record("expected .error, got \(result)")
-        return
-    }
-    #expect(message.contains("element_not_found"))
-    #expect(message.contains("was not found"))
-}
-
-@Test func testBounceRegionReturnsStateCWhenDisabled() async {
-    // Menu item resolves but AXEnabled is false — Logic itself is refusing
-    // the action for the current selection (e.g. unsupported region type).
-    // Resolution presses the Edit and Bounce-or-Join parents on the way
-    // down (to force their AX children to populate) — only a press on the
-    // disabled LEAF item itself is the violation this test guards.
-    let help = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., MIDI 리전."
-    let builder = FakeAXRuntimeBuilder()
-    let bounceMenuItem = addBounceMenu(to: builder, app: builder.element(1_000), enabled: false)
-    let bounceMenuItemID = builder.elementID(bounceMenuItem)
-    let fixture = makeRegionFixture(
-        builder: builder,
-        headers: [(axPoint(0, 100), axSize(200, 40))],
-        regions: [(
-            name: "RegionA", help: help, pos: axPoint(240, 108), size: axSize(320, 24), selected: true
-        )],
-        playheadPosition: "1.1.1.1",
-        performActionHandler: { element, _ in
-            if builder.elementID(element) == bounceMenuItemID {
-                Issue.record("a disabled menu item should never be pressed")
-            }
-            return true
-        }
-    )
-
-    let result = await AccessibilityChannel.defaultBounceRegionInPlace(
-        runtime: fixture.runtime,
-        settle: { },
-        menuOpenSettle: { }
-    )
-
-    guard case .error(let message) = result else {
-        Issue.record("expected .error, got \(result)")
-        return
-    }
-    #expect(message.contains("invalid_params"))
-    #expect(message.contains("disabled"))
-}
-
-@Test func testBounceRegionReturnsStateCWhenAXPressFails() async {
-    let help = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., MIDI 리전."
-    let builder = FakeAXRuntimeBuilder()
-    let fixture = makeRegionFixture(
-        builder: builder,
-        headers: [(axPoint(0, 100), axSize(200, 40))],
-        regions: [(
-            name: "RegionA", help: help, pos: axPoint(240, 108), size: axSize(320, 24), selected: true
-        )],
-        playheadPosition: "1.1.1.1",
-        performActionHandler: { _, _ in false }
-    )
-    addBounceMenu(to: builder, app: builder.element(1_000))
-
-    let result = await AccessibilityChannel.defaultBounceRegionInPlace(
-        runtime: fixture.runtime,
-        settle: { },
-        menuOpenSettle: { }
+        executeScript: { _ in .success("KEYSTROKE_ERROR: System Events is not enabled") },
+        settle: { }
     )
 
     guard case .error(let message) = result else {
@@ -766,5 +634,4 @@ private func addBounceMenu(
         return
     }
     #expect(message.contains("ax_write_failed"))
-    #expect(message.contains("AXPress failed"))
 }

@@ -224,39 +224,6 @@ enum AXLocalePolicy {
         rationale: "Menu item includes the operation name after the localized Undo prefix."
     )
 
-    /// Nested two levels under Edit — Edit > Bounce or Join > Bounce Regions
-    /// in Place… — live-verified against Logic Pro 12.3 on 2026-08-16. No
-    /// default keyboard shortcut is bound to it in that session (confirmed by
-    /// both the app and the user pressing Cmd+Option+B directly producing the
-    /// macOS "invalid key command" screen flash, not a bounce), which is why
-    /// `region.bounce` presses this item via AX instead of sending the
-    /// keystroke `edit.bounce_in_place` still relies on (`CGEventChannel`'s
-    /// `.cmdOption(11)`, `MIDIKeyCommandsChannel`'s prefs-number path) — a
-    /// shortcut that can be reassigned or entirely unbound in a user's own
-    /// Key Commands set, unlike the menu item itself. `.prefix` mode
-    /// sidesteps needing to pin the exact trailing ellipsis character.
-    static let bounceRegionsInPlaceMenuItem = LabelSet(
-        canonical: "Bounce Regions in Place",
-        variants: [],
-        rationale: "Menu-only path for region.bounce — immune to Key Commands reassignment/unbinding, unlike edit.bounce_in_place's keystroke."
-    )
-    static let bounceRegionsInPlaceMenuPath = MenuPath(
-        bar: editMenuBar,
-        item: bounceRegionsInPlaceMenuItem,
-        itemMode: .prefix
-    )
-
-    /// The parent submenu item that has to be resolved (and, live against a
-    /// real Logic Pro process, pressed to force-open) before AX exposes
-    /// "Bounce Regions in Place…" as a descendant at all — an unopened
-    /// Cocoa NSMenu submenu can have zero AX children until something opens
-    /// it once, a distinct wrinkle from the single-level menu paths above.
-    static let bounceOrJoinMenuItem = LabelSet(
-        canonical: "Bounce or Join",
-        variants: [],
-        rationale: "Parent submenu of Bounce Regions in Place…; must be opened once before its children are AX-visible."
-    )
-
     /// What the Edit-menu Undo entry says when the thing on top of the stack is a plug-in insert.
     ///
     /// The rollback path matched only the "Undo" prefix, so it pressed whatever was on top. Measured
