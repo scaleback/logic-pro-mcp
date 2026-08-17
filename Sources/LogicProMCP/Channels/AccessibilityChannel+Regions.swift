@@ -237,6 +237,23 @@ extension AccessibilityChannel {
         return sorted.last
     }
 
+    /// The region belonging to a specific track index, regardless of AX
+    /// selection state. Used by `region.bounce`'s post-check: a real bounce
+    /// (confirmed live 2026-08-17, visually verified against Edgar's
+    /// project) creates a new track holding the result but does not
+    /// reliably leave anything `AXSelected` afterward — `selectedRegionInfo`
+    /// alone can miss a bounce that genuinely succeeded, so this reads the
+    /// newly-created track directly by index as a fallback.
+    static func regionInfo(
+        atTrackIndex trackIndex: Int,
+        runtime: AXLogicProElements.Runtime = .production
+    ) -> RegionInfo? {
+        guard case .success(let result) = enumerateRegionItems(runtime: runtime) else {
+            return nil
+        }
+        return result.regions.first { $0.info.trackIndex == trackIndex }?.info
+    }
+
     /// Parse the integer bar from `TransportState.position`
     /// ("Bar.Beat.Division.Tick"). Returns nil when the transport bar is not
     /// reachable or the position string can't be parsed.
@@ -576,13 +593,21 @@ extension AccessibilityChannel {
     /// holding the bounced audio region (track count +1) and mutes the
     /// original MIDI region on its original track rather than converting
     /// it — it does not reuse `pre.trackIndex`. So State A requires: track
-    /// count grew by exactly one, the newly auto-selected region's `kind`
-    /// is `"audio"`, and its bar position matches the original within ±1
-    /// bar (same tolerance as `move_to_playhead`) — NOT the same
-    /// trackIndex, which this flow never produces. Anything else —
-    /// nothing selected post-action, no new track, still MIDI, or landed
-    /// somewhere unexpected — is State B, never a silently-assumed
-    /// success.
+    /// count grew by exactly one, the post-bounce region's `kind` is
+    /// `"audio"`, and its bar position matches the original within ±1 bar
+    /// (same tolerance as `move_to_playhead`) — NOT the same trackIndex,
+    /// which this flow never produces.
+    ///
+    /// One more live-confirmed wrinkle: Logic does not reliably leave
+    /// anything `AXSelected` after a bounce that genuinely succeeded (a
+    /// real, waveform-bearing audio region on the new track, selection
+    /// simply nil). `selectedRegionInfo` is tried first since it's the more
+    /// direct signal when Logic does set it, but when a new track exists
+    /// and nothing is selected, `regionInfo(atTrackIndex:)` reads that new
+    /// track's region directly instead of reporting an uncertain result for
+    /// an operation that provably worked. Anything else — no new track,
+    /// still MIDI, or landed somewhere unexpected — is State B, never a
+    /// silently-assumed success.
     static func defaultBounceRegionInPlace(
         runtime: AXLogicProElements.Runtime = .production,
         executeScript: @Sendable (String) async -> ChannelResult = { await AppleScriptChannel.executeAppleScript($0) },
@@ -649,7 +674,19 @@ extension AccessibilityChannel {
             await settle()
 
             let postTrackCount = AXLogicProElements.allTrackHeaders(runtime: runtime).count
+            let trackCreated = postTrackCount == preTrackCount + 1
+
+            // Live testing (2026-08-17) found Logic does not reliably leave
+            // anything AXSelected after a bounce that genuinely succeeded
+            // (confirmed visually: the new track's audio region was real,
+            // waveform and all — selectedRegionInfo just came back nil). Try
+            // selection first since it's the more direct signal when Logic
+            // does set it; when a track was created and nothing is
+            // selected, fall back to reading that new track's region
+            // directly by index rather than reporting an uncertain result
+            // for an operation that provably worked.
             let post = selectedRegionInfo(runtime: runtime)
+                ?? (trackCreated ? regionInfo(atTrackIndex: preTrackCount, runtime: runtime) : nil)
             let extrasBase: [String: Any] = [
                 "via": "system_events_keystroke",
                 "dialog_confirm": output,
@@ -664,7 +701,7 @@ extension AccessibilityChannel {
             guard let post = post else {
                 return .success(HonestContract.encodeStateB(
                     reason: .readbackUnavailable,
-                    extras: extrasBase.merging(["note": "no selected region after bounce"]) { _, new in new }
+                    extras: extrasBase.merging(["note": "no selected region, and no region found on the new track, after bounce"]) { _, new in new }
                 ))
             }
 
@@ -674,7 +711,6 @@ extension AccessibilityChannel {
             extras["post_start_bar"] = post.startBar
             extras["post_kind"] = post.kind
 
-            let trackCreated = postTrackCount == preTrackCount + 1
             let positionMatches = abs(post.startBar - pre.startBar) <= 1
 
             if trackCreated && post.kind == "audio" && positionMatches {

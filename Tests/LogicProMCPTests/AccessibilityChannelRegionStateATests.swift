@@ -526,6 +526,61 @@ private func addFakeTrackHeader(to builder: FakeAXRuntimeBuilder, existingHeader
     #expect(obj["post_track_count"] as? Int == 2)
 }
 
+@Test func testBounceRegionReturnsStateAViaNewTrackWhenNothingSelectedAfterBounce() async {
+    // Real Logic behavior (confirmed live 2026-08-17, visually verified):
+    // a bounce can genuinely succeed — a real, waveform-bearing audio
+    // region on a new track — while leaving NOTHING AXSelected afterward.
+    // selectedRegionInfo alone would misreport this as
+    // readback_unavailable; the regionInfo(atTrackIndex:) fallback must
+    // read the new track directly and still reach State A.
+    let preHelp = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., MIDI 리전."
+    let postHelp = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., 오디오 리전."
+
+    let fixture = makeRegionFixture(
+        headers: [(axPoint(0, 100), axSize(200, 40))],
+        regions: [(
+            name: "RegionA",
+            help: preHelp,
+            pos: axPoint(240, 108),
+            size: axSize(320, 24),
+            selected: true
+        )],
+        playheadPosition: "1.1.1.1"
+    )
+
+    let result = await AccessibilityChannel.defaultBounceRegionInPlace(
+        runtime: fixture.runtime,
+        executeScript: { _ in
+            // Original region loses selection (matches real behavior) and
+            // stays MIDI — it gets muted, not converted, on its own track.
+            fixture.builder.setAttribute(fixture.builder.element(3_000), kAXSelectedAttribute as String, false)
+            // A new track appears...
+            addFakeTrackHeader(to: fixture.builder, existingHeaderCount: 1)
+            // ...holding a new, UNSELECTED audio region at the same bar.
+            let newRegion = fixture.builder.element(3_999)
+            fixture.builder.setAttribute(newRegion, kAXRoleAttribute as String, kAXLayoutItemRole as String)
+            fixture.builder.setAttribute(newRegion, kAXDescriptionAttribute as String, "RegionA_bip")
+            fixture.builder.setAttribute(newRegion, kAXHelpAttribute as String, postHelp)
+            fixture.builder.setAttribute(newRegion, kAXPositionAttribute as String, axPoint(240, 1015))
+            fixture.builder.setAttribute(newRegion, kAXSizeAttribute as String, axSize(320, 24))
+            fixture.builder.setAttribute(newRegion, kAXSelectedAttribute as String, false)
+            let contentGroup = fixture.builder.element(1_003)
+            fixture.builder.setChildren(contentGroup, [fixture.builder.element(3_000), newRegion])
+            return .success("OK_CONFIRMED")
+        },
+        settle: { }
+    )
+
+    #expect(result.isSuccess)
+    let obj = decodeJSON(result.message)
+    #expect((obj["success"] as? Bool)!)
+    #expect((obj["verified"] as? Bool)!)
+    #expect(obj["post_kind"] as? String == "audio")
+    #expect(obj["post_track_index"] as? Int == 1)
+    #expect(obj["pre_track_count"] as? Int == 1)
+    #expect(obj["post_track_count"] as? Int == 2)
+}
+
 @Test func testBounceRegionReturnsStateBWhenNoNewTrackDespiteAudioKind() async {
     // Kind flipped to "audio" but track count stayed put — the AND gate
     // (trackCreated && kind == audio && positionMatches) must not pass on
