@@ -531,7 +531,7 @@ private func addFakeTrackHeader(to builder: FakeAXRuntimeBuilder, existingHeader
     // a bounce can genuinely succeed — a real, waveform-bearing audio
     // region on a new track — while leaving NOTHING AXSelected afterward.
     // selectedRegionInfo alone would misreport this as
-    // readback_unavailable; the regionInfo(atTrackIndex:) fallback must
+    // readback_unavailable; the newestTrackRegionInfo fallback must
     // read the new track directly and still reach State A.
     let preHelp = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., MIDI 리전."
     let postHelp = "리전은 1 마디 에서 시작하여 3 마디 에서 끝납니다., 오디오 리전."

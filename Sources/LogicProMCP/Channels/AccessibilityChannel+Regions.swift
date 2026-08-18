@@ -237,21 +237,32 @@ extension AccessibilityChannel {
         return sorted.last
     }
 
-    /// The region belonging to a specific track index, regardless of AX
+    /// The region on whichever track currently reads the highest
+    /// `trackIndex` among all enumerated regions, regardless of AX
     /// selection state. Used by `region.bounce`'s post-check: a real bounce
-    /// (confirmed live 2026-08-17, visually verified against Edgar's
-    /// project) creates a new track holding the result but does not
-    /// reliably leave anything `AXSelected` afterward — `selectedRegionInfo`
-    /// alone can miss a bounce that genuinely succeeded, so this reads the
-    /// newly-created track directly by index as a fallback.
-    static func regionInfo(
-        atTrackIndex trackIndex: Int,
+    /// (confirmed live 2026-08-17, visually verified twice against Edgar's
+    /// project) creates a new track holding the result — always the
+    /// visually-lowest row, hence the highest Y-position-matched
+    /// `trackIndex` — but does not reliably leave anything `AXSelected`
+    /// afterward, so `selectedRegionInfo` alone can miss a bounce that
+    /// genuinely succeeded.
+    ///
+    /// Deliberately NOT "the region at array index `preTrackCount`"
+    /// (tried first, live 2026-08-17): `trackIndex` is assigned by
+    /// Y-position match against `allTrackHeaders()`'s array order, which
+    /// this project's own AX helpers never guarantee tracks top-to-bottom —
+    /// two live attempts at guessing the new header's exact array position
+    /// both found nothing, even though the resulting audio region was
+    /// visibly on screen. Taking the max `trackIndex` across whatever IS
+    /// enumerated sidesteps needing to predict that position at all.
+    static func newestTrackRegionInfo(
         runtime: AXLogicProElements.Runtime = .production
     ) -> RegionInfo? {
-        guard case .success(let result) = enumerateRegionItems(runtime: runtime) else {
+        guard case .success(let result) = enumerateRegionItems(runtime: runtime),
+              !result.regions.isEmpty else {
             return nil
         }
-        return result.regions.first { $0.info.trackIndex == trackIndex }?.info
+        return result.regions.map { $0.info }.max { $0.trackIndex < $1.trackIndex }
     }
 
     /// Parse the integer bar from `TransportState.position`
@@ -603,8 +614,9 @@ extension AccessibilityChannel {
     /// real, waveform-bearing audio region on the new track, selection
     /// simply nil). `selectedRegionInfo` is tried first since it's the more
     /// direct signal when Logic does set it, but when a new track exists
-    /// and nothing is selected, `regionInfo(atTrackIndex:)` reads that new
-    /// track's region directly instead of reporting an uncertain result for
+    /// and nothing is selected, `newestTrackRegionInfo` reads whichever
+    /// enumerated region has the highest `trackIndex` (the new track is
+    /// always visually lowest) instead of reporting an uncertain result for
     /// an operation that provably worked. Anything else — no new track,
     /// still MIDI, or landed somewhere unexpected — is State B, never a
     /// silently-assumed success.
@@ -678,15 +690,16 @@ extension AccessibilityChannel {
 
             // Live testing (2026-08-17) found Logic does not reliably leave
             // anything AXSelected after a bounce that genuinely succeeded
-            // (confirmed visually: the new track's audio region was real,
-            // waveform and all — selectedRegionInfo just came back nil). Try
-            // selection first since it's the more direct signal when Logic
-            // does set it; when a track was created and nothing is
-            // selected, fall back to reading that new track's region
-            // directly by index rather than reporting an uncertain result
+            // (confirmed visually, twice: the new track's audio region was
+            // real, waveform and all — selectedRegionInfo just came back
+            // nil both times). Try selection first since it's the more
+            // direct signal when Logic does set it; when a track was
+            // created and nothing is selected, fall back to the region
+            // with the highest trackIndex (the newest track, always
+            // visually lowest) rather than reporting an uncertain result
             // for an operation that provably worked.
             let post = selectedRegionInfo(runtime: runtime)
-                ?? (trackCreated ? regionInfo(atTrackIndex: preTrackCount, runtime: runtime) : nil)
+                ?? (trackCreated ? newestTrackRegionInfo(runtime: runtime) : nil)
             let extrasBase: [String: Any] = [
                 "via": "system_events_keystroke",
                 "dialog_confirm": output,
