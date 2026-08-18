@@ -95,8 +95,39 @@ extension AccessibilityChannel {
         return itemFrame.intersects(windowFrame)
     }
 
+    /// Classify a region as drummer / midi / audio / unknown.
+    ///
+    /// The AXHelp string is Logic's own description and names the type
+    /// outright ("…, Audio region. An editable object representing recorded
+    /// or imported audio.") — it is authoritative. The AXDescription (name)
+    /// is whatever the region happens to be CALLED, which is user- and
+    /// Logic-controlled text that frequently contradicts the real type.
+    ///
+    /// Both used to be concatenated into one haystack, which let a name
+    /// decide the kind whenever it happened to contain a type word first.
+    /// Live evidence (2026-08-17, Edgar's project): bouncing a MIDI region
+    /// yields a real AUDIO region that Logic names after the original —
+    /// "MIDI Region_bip". Its help says "Audio region", but the old
+    /// name+help haystack matched "midi" (from the name) before ever
+    /// reaching the audio check, so every bounced region read back as
+    /// `kind: "midi"`. That is exactly what kept `region.bounce` from ever
+    /// reaching State A: its verification requires `kind == "audio"`, so a
+    /// bounce that provably worked (audio region on a new track, waveform
+    /// visible on screen) was still reported as State B.
+    ///
+    /// So: classify from the help text alone. Only when help yields nothing
+    /// usable does the name join the haystack, preserving the previous
+    /// behavior for elements whose AXHelp is missing rather than trading
+    /// one blind spot for another.
     private static func classifyRegionKind(name: String, help: String) -> String {
-        let searchable = "\(name) \(help)".lowercased()
+        let fromHelp = classifyRegionKind(in: help.lowercased())
+        if fromHelp != "unknown" {
+            return fromHelp
+        }
+        return classifyRegionKind(in: "\(name) \(help)".lowercased())
+    }
+
+    private static func classifyRegionKind(in searchable: String) -> String {
         if AXLocalePolicy.regionKindDrummer.containsAny(in: searchable) {
             return "drummer"
         }

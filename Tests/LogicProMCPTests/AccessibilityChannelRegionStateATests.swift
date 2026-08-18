@@ -462,6 +462,81 @@ private func makeRegionFixture(
     #expect(sel?.startBar == 7)
 }
 
+// MARK: - region kind classification (help text is authoritative, not the name)
+
+@Test func testRegionKindReadsAudioFromHelpEvenWhenNameSaysMIDI() {
+    // Verbatim from a live get_regions against Edgar's project (2026-08-17),
+    // after bouncing a MIDI region: Logic names the resulting AUDIO region
+    // after the original ("MIDI Region_bip"), so the name contains "MIDI"
+    // while the help says "Audio region". Classifying over name+help matched
+    // "midi" from the name first and mislabelled every bounced region as
+    // MIDI — which is what kept region.bounce from ever reaching State A.
+    let audioHelp = "Region starts at 1 bar  and ends at 19 bars , Audio region. "
+        + "An editable object representing recorded or imported audio. Drag the middle "
+        + "to move, the lower edges to resize, and the upper-right edge to loop. "
+        + "Use the tools to perform other edits. "
+
+    let fixture = makeRegionFixture(
+        headers: [(axPoint(0, 100), axSize(200, 40))],
+        regions: [(
+            name: "MIDI Region_bip_3",
+            help: audioHelp,
+            pos: axPoint(240, 108),
+            size: axSize(320, 24),
+            selected: true
+        )],
+        playheadPosition: "1.1.1.1"
+    )
+
+    let sel = AccessibilityChannel.selectedRegionInfo(runtime: fixture.runtime)
+    #expect(sel?.name == "MIDI Region_bip_3")
+    #expect(sel?.kind == "audio")
+}
+
+@Test func testRegionKindStillReadsMIDIFromHelp() {
+    // The inverse must keep working: a region whose NAME carries no type
+    // word at all is still MIDI when the help says so.
+    let midiHelp = "Region starts at 1 bar  and ends at 19 bars , MIDI region. "
+        + "Contains MIDI note and controller events. "
+
+    let fixture = makeRegionFixture(
+        headers: [(axPoint(0, 100), axSize(200, 40))],
+        regions: [(
+            name: "Dark Percussion Layers",
+            help: midiHelp,
+            pos: axPoint(240, 108),
+            size: axSize(320, 24),
+            selected: true
+        )],
+        playheadPosition: "1.1.1.1"
+    )
+
+    #expect(AccessibilityChannel.selectedRegionInfo(runtime: fixture.runtime)?.kind == "midi")
+}
+
+@Test func testRegionKindReadsDrummerFromHelpDespiteMIDIMention() {
+    // Live-captured Session Player help mentions "MIDI region" mid-sentence
+    // ("convert to a MIDI region to edit in the Piano Roll Editor"), so the
+    // drummer check running first is load-bearing, not incidental.
+    let drummerHelp = "Region starts at 3 bars  and ends at 19 bars , Session Player region. "
+        + "A realistic session player performance that you can edit in the Session Player "
+        + "Editor. Control-click and convert to a MIDI region to edit in the Piano Roll Editor. "
+
+    let fixture = makeRegionFixture(
+        headers: [(axPoint(0, 100), axSize(200, 40))],
+        regions: [(
+            name: "Drummer - Modern House",
+            help: drummerHelp,
+            pos: axPoint(240, 108),
+            size: axSize(320, 24),
+            selected: true
+        )],
+        playheadPosition: "1.1.1.1"
+    )
+
+    #expect(AccessibilityChannel.selectedRegionInfo(runtime: fixture.runtime)?.kind == "drummer")
+}
+
 // MARK: - region.bounce — State A/B/C paths
 
 /// Adds one more fake track header to the fixture's header rail, simulating
