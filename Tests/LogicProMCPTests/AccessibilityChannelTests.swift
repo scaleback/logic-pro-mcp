@@ -1319,7 +1319,21 @@ private final class MarkerWindowReadSequence: @unchecked Sendable {
     #expect(regions[0].kind == "midi")
 }
 
-@Test func testAccessibilityChannelAXBackedRegionsMarkViewportSubsetIncomplete() async throws {
+/// Regions scrolled out of the window are REPORTED, not dropped, and the
+/// payload still carries its viewport disclaimers.
+///
+/// Until 2026-08-17 a frame-intersection filter dropped any region whose
+/// rect did not overlap the window. Live evidence against Edgar's project
+/// showed what that cost: with the playhead run out to bar 127, the arrange
+/// view had scrolled away and `get_regions` returned `layoutItems: 10,
+/// nonRegion: 0, regions: []` — Logic's AX tree still exposed all ten
+/// regions with readable help text, and we discarded every one of them.
+/// Every readback built on this enumeration went blind at the same time.
+///
+/// `complete: false` / `scope` / `reason` are hardcoded honesty disclaimers
+/// about Logic's AX tree, not about this filter, so reporting more regions
+/// does not weaken them — they stay asserted below.
+@Test func testAccessibilityChannelAXBackedRegionsReportScrolledOutRegionsAndStayIncomplete() async throws {
     let builder = FakeAXRuntimeBuilder()
     let app = builder.element(900)
     let window = builder.element(901)
@@ -1381,21 +1395,91 @@ private final class MarkerWindowReadSequence: @unchecked Sendable {
     #expect(!((payload["complete"] as? Bool)!))
     #expect(payload["scope"] as? String == "visible_arrange_area")
     #expect(payload["reason"] as? String == "logic_ax_viewport_only")
-    #expect(payload["returned_count"] as? Int == 2)
+    #expect(payload["returned_count"] as? Int == 3)
     let regionValue = try #require(payload["regions"])
     let regionData = try JSONSerialization.data(withJSONObject: regionValue)
     let regions = try JSONDecoder().decode([RegionInfo].self, from: regionData)
-    #expect(regions.count == 2)
+    #expect(regions.count == 3)
     #expect(regions[0].name == "MIDI Region")
     #expect(regions[0].trackIndex == 0)
     #expect(regions[0].startBar == 1)
     #expect(regions[0].endBar == 2)
     #expect(regions[0].kind == "midi")
-    #expect(regions[1].name == "Session Player Region")
-    #expect(regions[1].trackIndex == 1)
-    #expect(regions[1].startBar == 9)
-    #expect(regions[1].endBar == 13)
-    #expect(regions[1].kind == "drummer")
+    // Scrolled far to the RIGHT (x = 2500, window is 1200 wide) but at the
+    // same Y as lane 0 — so it is reported, and its track attribution is
+    // exact. Horizontal scroll never invalidates the vertical lane match,
+    // which is why including these regions costs no accuracy.
+    #expect(regions[1].name == "Audio Region")
+    #expect(regions[1].trackIndex == 0)
+    #expect(regions[1].startBar == 33)
+    #expect(regions[1].endBar == 34)
+    #expect(regions[1].kind == "audio")
+    #expect(regions[2].name == "Session Player Region")
+    #expect(regions[2].trackIndex == 1)
+    #expect(regions[2].startBar == 9)
+    #expect(regions[2].endBar == 13)
+    #expect(regions[2].kind == "drummer")
+}
+
+/// The bound on the lane match: a region with no header anywhere near it
+/// vertically reports `trackIndex == -1`, not a confident wrong lane.
+///
+/// This is the guard that made dropping the viewport filter safe. Track
+/// attribution snaps a region to the nearest header band, and that snap used
+/// to have no distance limit — harmless only while off-screen regions were
+/// already excluded. Reporting them without this bound would have converted
+/// "excluded" into "silently mislabelled", which is strictly worse: a caller
+/// can handle -1, but cannot detect a plausible-looking wrong track.
+@Test func testAccessibilityChannelAXBackedRegionFarFromAnyTrackHeaderReportsUnknownTrack() async throws {
+    let builder = FakeAXRuntimeBuilder()
+    let app = builder.element(940)
+    let window = builder.element(941)
+    let headerRail = builder.element(942)
+    let header0 = builder.element(943)
+    let contentGroup = builder.element(944)
+    let strandedRegion = builder.element(945)
+
+    builder.setAttribute(app, kAXMainWindowAttribute as String, window)
+    builder.setChildren(window, [headerRail, contentGroup])
+    builder.setAttribute(window, kAXPositionAttribute as String, axPoint(0, 0))
+    builder.setAttribute(window, kAXSizeAttribute as String, axSize(1_200, 400))
+
+    builder.setAttribute(headerRail, kAXRoleAttribute as String, kAXGroupRole as String)
+    builder.setAttribute(headerRail, kAXDescriptionAttribute as String, "Tracks header")
+    builder.setChildren(headerRail, [header0])
+    builder.setAttribute(header0, kAXRoleAttribute as String, kAXLayoutItemRole as String)
+    builder.setAttribute(header0, kAXPositionAttribute as String, axPoint(0, 100))
+    builder.setAttribute(header0, kAXSizeAttribute as String, axSize(200, 40))
+
+    builder.setAttribute(contentGroup, kAXRoleAttribute as String, kAXGroupRole as String)
+    builder.setAttribute(contentGroup, kAXDescriptionAttribute as String, "Tracks contents")
+    builder.setChildren(contentGroup, [strandedRegion])
+
+    // Thousands of points below the only readable header band (100...140).
+    builder.setAttribute(strandedRegion, kAXRoleAttribute as String, kAXLayoutItemRole as String)
+    builder.setAttribute(strandedRegion, kAXDescriptionAttribute as String, "Stranded Region")
+    builder.setAttribute(strandedRegion, kAXHelpAttribute as String, "Region starts at 5 bars and ends at 7 bars, MIDI region.")
+    builder.setAttribute(strandedRegion, kAXPositionAttribute as String, axPoint(240, 5_000))
+    builder.setAttribute(strandedRegion, kAXSizeAttribute as String, axSize(320, 24))
+
+    let channel = makeAXBackedAccessibilityChannel(builder: builder, app: app)
+    let result = await channel.execute(operation: "region.get_regions", params: [:])
+    #expect(result.isSuccess)
+
+    let payload = try #require(
+        JSONSerialization.jsonObject(with: Data(result.message.utf8)) as? [String: Any]
+    )
+    let regionValue = try #require(payload["regions"])
+    let regionData = try JSONSerialization.data(withJSONObject: regionValue)
+    let regions = try JSONDecoder().decode([RegionInfo].self, from: regionData)
+
+    // Still reported — its bars and kind are real and readable...
+    #expect(regions.count == 1)
+    #expect(regions[0].name == "Stranded Region")
+    #expect(regions[0].startBar == 5)
+    #expect(regions[0].kind == "midi")
+    // ...but the lane is honestly unknown rather than guessed as 0.
+    #expect(regions[0].trackIndex == -1)
 }
 
 @Test func testAccessibilityChannelAXBackedRegionsMissingContentGroupIncludesHint() async {

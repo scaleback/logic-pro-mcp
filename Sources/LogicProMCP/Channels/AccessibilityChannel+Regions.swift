@@ -6,15 +6,24 @@ import Foundation
 extension AccessibilityChannel {
     // MARK: - Regions
 
-    /// Read all regions (MIDI/audio clips) currently shown in the arrange area.
+    /// Read the arrange regions (MIDI/audio clips) Logic's AX tree exposes.
     ///
     /// Uses AX traversal: locate the "트랙 콘텐츠"/"Track Content" AXGroup, collect
     /// AXLayoutItem children whose AXHelp matches Logic's region-description pattern,
     /// and parse bar positions from the localized help string.
     ///
-    /// Track index is assigned by matching region Y-midpoint to the closest track-header
-    /// Y-midpoint. If no track headers can be read (e.g. scrolled offscreen), returns
-    /// index -1 so the caller can still see the regions.
+    /// Regions scrolled outside the visible window are INCLUDED. A frame-
+    /// intersection filter used to drop them, which cost real data: with the
+    /// arrange view scrolled away, this returned zero regions while Logic's
+    /// AX tree still carried all of them, help text and all (measured live
+    /// 2026-08-17). Track attribution is what needed guarding instead — see
+    /// `trackIndexForRegion`, which reports -1 rather than snapping a region
+    /// to a far-away lane.
+    ///
+    /// `complete: false` / `scope` / `reason` below remain hardcoded: they
+    /// disclaim what Logic's AX tree itself materializes, which is not
+    /// something this traversal can widen, and callers must never read the
+    /// result as a project-wide inventory.
     static func defaultGetRegions(runtime: AXLogicProElements.Runtime = .production) -> ChannelResult {
         switch enumerateRegionItems(runtime: runtime) {
         case .failure(let err):
@@ -70,31 +79,6 @@ extension AccessibilityChannel {
         return AXLocalePolicy.trackContentGeneric.labels.contains(normalized)
     }
 
-    private static func frame(
-        of element: AXUIElement,
-        runtime: AXHelpers.Runtime
-    ) -> CGRect? {
-        guard let position = AXHelpers.getPosition(element, runtime: runtime),
-              let size = AXHelpers.getSize(element, runtime: runtime) else {
-            return nil
-        }
-        return CGRect(origin: position, size: size)
-    }
-
-    private static func isVisibleArrangeRegion(
-        _ item: AXUIElement,
-        within window: AXUIElement,
-        runtime: AXHelpers.Runtime
-    ) -> Bool {
-        guard let windowFrame = frame(of: window, runtime: runtime),
-              let itemFrame = frame(of: item, runtime: runtime),
-              !windowFrame.isEmpty,
-              !itemFrame.isEmpty else {
-            return true
-        }
-        return itemFrame.intersects(windowFrame)
-    }
-
     /// Classify a region as drummer / midi / audio / unknown.
     ///
     /// The AXHelp string is Logic's own description and names the type
@@ -140,6 +124,43 @@ extension AccessibilityChannel {
         return "unknown"
     }
 
+    /// Map a region's vertical midpoint to the track lane that owns it, or
+    /// `-1` when no lane plausibly does.
+    ///
+    /// A region whose midpoint falls INSIDE a header's vertical band belongs
+    /// to that track — the common case, and exact. Regions can legitimately
+    /// sit slightly outside their band (row padding, partially scrolled
+    /// lanes), so a near miss still resolves, but only within one band-height
+    /// of tolerance.
+    ///
+    /// The tolerance is the point of this function. The previous
+    /// implementation took the nearest header with `min(by:)` and NO distance
+    /// limit, which was safe only because a viewport filter had already
+    /// dropped everything off-screen. With that filter gone (so that regions
+    /// scrolled out of view are still reported at all), an unbounded nearest
+    /// match would hand a region thousands of points below the last readable
+    /// header that header's index — turning "excluded" into "confidently
+    /// mislabelled", which is the worse failure by far. Beyond the tolerance
+    /// this returns -1, which callers already understand as "track unknown".
+    private static func trackIndexForRegion(
+        midY: CGFloat,
+        bands: [(index: Int, minY: CGFloat, maxY: CGFloat)]
+    ) -> Int {
+        guard !bands.isEmpty else { return -1 }
+
+        if let containing = bands.first(where: { midY >= $0.minY && midY <= $0.maxY }) {
+            return containing.index
+        }
+
+        func gap(_ band: (index: Int, minY: CGFloat, maxY: CGFloat)) -> CGFloat {
+            midY < band.minY ? band.minY - midY : midY - band.maxY
+        }
+
+        guard let nearest = bands.min(by: { gap($0) < gap($1) }) else { return -1 }
+        let tolerance = max(nearest.maxY - nearest.minY, 1)
+        return gap(nearest) <= tolerance ? nearest.index : -1
+    }
+
     /// Walk the arrange area's "Track Content" group, collect every
     /// AXLayoutItem region with parsed bar positions and its underlying AX
     /// element handle. Shared across `defaultGetRegions`,
@@ -181,11 +202,16 @@ extension AccessibilityChannel {
         }
 
         let headers = AXLogicProElements.allTrackHeaders(runtime: runtime)
-        let headerYs: [(index: Int, y: CGFloat)] = headers.enumerated().compactMap { pair in
-            guard let p = AXHelpers.getPosition(pair.element, runtime: runtime.ax),
-                  let s = AXHelpers.getSize(pair.element, runtime: runtime.ax) else { return nil }
-            return (pair.offset, p.y + s.height / 2)
-        }
+        // Keep each header's full vertical BAND (top..bottom), not just its
+        // centre: `trackIndexForRegion` needs to tell "inside this lane" from
+        // "merely nearest to it", and a centre alone cannot express that.
+        let headerBands: [(index: Int, minY: CGFloat, maxY: CGFloat)] = headers
+            .enumerated()
+            .compactMap { pair in
+                guard let p = AXHelpers.getPosition(pair.element, runtime: runtime.ax),
+                      let s = AXHelpers.getSize(pair.element, runtime: runtime.ax) else { return nil }
+                return (pair.offset, p.y, p.y + s.height)
+            }
 
         let items = AXHelpers.findAllDescendants(
             of: content, role: "AXLayoutItem", maxDepth: 10, runtime: runtime.ax
@@ -196,21 +222,17 @@ extension AccessibilityChannel {
             let help = AXHelpers.getHelp(item, runtime: runtime.ax) ?? ""
             let isRegion = AXLocalePolicy.regionHelpKeyword.containsAny(in: help)
             guard isRegion else { nonRegionCount += 1; continue }
-            guard isVisibleArrangeRegion(item, within: window, runtime: runtime.ax) else {
-                continue
-            }
-
             let name = AXHelpers.getDescription(item, runtime: runtime.ax) ?? ""
             let (startBar, endBar) = parseRegionBars(from: help)
             let kind = classifyRegionKind(name: name, help: help)
 
             var trackIndex = -1
             if let pos = AXHelpers.getPosition(item, runtime: runtime.ax),
-               let size = AXHelpers.getSize(item, runtime: runtime.ax),
-               !headerYs.isEmpty {
-                let regionMidY = pos.y + size.height / 2
-                let best = headerYs.min(by: { abs($0.y - regionMidY) < abs($1.y - regionMidY) })
-                trackIndex = best?.index ?? -1
+               let size = AXHelpers.getSize(item, runtime: runtime.ax) {
+                trackIndex = trackIndexForRegion(
+                    midY: pos.y + size.height / 2,
+                    bands: headerBands
+                )
             }
 
             regions.append((
