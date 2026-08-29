@@ -1,3 +1,4 @@
+@preconcurrency import ApplicationServices
 import Foundation
 import Testing
 @testable import LogicProMCP
@@ -375,4 +376,121 @@ private func makeSignals(
     #expect(AXLocalePolicy.deleteTracksPrimaryButton.matches("Delete Tracks and Content"))
     // KO variant intentionally absent (unverified) — must not match a guess.
     #expect(!AXLocalePolicy.deleteTracksPrimaryButton.matches("트랙 및 콘텐츠 삭제"))
+}
+
+// MARK: - #545-class: per-track delete confirm sheets
+
+/// Builds a Logic-shaped window carrying one AXSheet whose buttons sit one
+/// AXGroup below it — the real shape, measured upstream on Logic 12.3: Logic
+/// never vends `AXSheets`, the sheet is reachable only as an AXChildren member
+/// with role AXSheet, and `every button of sheet` returns 0 because they live
+/// in a nested group.
+private func makeDeleteSheetFixture(
+    buttonTitles: [String],
+    sheetDescription: String
+) -> (builder: FakeAXRuntimeBuilder, runtime: AXLogicProElements.Runtime) {
+    let builder = FakeAXRuntimeBuilder()
+    let app = builder.element(7_000)
+    let window = builder.element(7_001)
+    let sheet = builder.element(7_002)
+    let buttonGroup = builder.element(7_003)
+
+    builder.setAttribute(app, kAXMainWindowAttribute as String, window)
+    builder.setAttribute(window, kAXRoleAttribute as String, kAXWindowRole as String)
+
+    builder.setAttribute(sheet, kAXRoleAttribute as String, kAXSheetRole as String)
+    builder.setAttribute(sheet, kAXDescriptionAttribute as String, sheetDescription)
+
+    builder.setAttribute(buttonGroup, kAXRoleAttribute as String, kAXGroupRole as String)
+    builder.setAttribute(buttonGroup, kAXDescriptionAttribute as String, "group")
+
+    let buttons: [AXUIElement] = buttonTitles.enumerated().map { idx, title in
+        let b = builder.element(7_010 + idx)
+        builder.setAttribute(b, kAXRoleAttribute as String, kAXButtonRole as String)
+        builder.setAttribute(b, kAXTitleAttribute as String, title)
+        return b
+    }
+    builder.setChildren(buttonGroup, buttons)
+    builder.setChildren(sheet, [buttonGroup])
+    builder.setChildren(window, [sheet])
+
+    return (builder, builder.makeLogicRuntime(appElement: app))
+}
+
+/// The regression itself. `track.delete` on a track that carries regions raises
+/// "Delete Track and Regions?", whose primary button is labelled exactly
+/// `Delete`. The reconciler's structural net was `hasPrefix("Delete ")`, and
+/// `"Delete".hasPrefix("Delete ")` is FALSE — one trailing space from matching
+/// — so the sheet classified as `.unknownSheet` and failed closed.
+///
+/// Failing closed here is not a mere refusal: the sheet stays on screen, and
+/// every later operation in any surface returns State C until a human clears
+/// it. Reported upstream as MongLong0214/logic-pro-mcp#545.
+@Test func testDeleteTrackAndRegionsSheetIsRecognizedAsDeleteConfirm() {
+    let fixture = makeDeleteSheetFixture(
+        buttonTitles: ["Cancel", "Delete"],
+        sheetDescription: "Delete Track and Regions?"
+    )
+
+    let signals = AccessibilityChannel.readModalSignals(runtime: fixture.runtime)
+
+    #expect(signals.sheetPresent)
+    #expect(signals.cancelButtonPresent)
+    #expect(signals.deleteConfirmButtonPresent, "a bare 'Delete' primary must be recognized")
+    // The executor clicks the label we captured, so it must be the real one.
+    #expect(signals.deletePrimaryTitle == "Delete")
+    #expect(ModalReconciliation.classify(signals) == .deleteConfirm)
+}
+
+/// Live Loops variant, same two-button Cancel/Delete shape. Measured upstream
+/// on a Live Loops project; it must be covered by the same change rather than
+/// waiting for its own follow-up.
+@Test func testDeleteTrackAndCellsSheetIsRecognizedAsDeleteConfirm() {
+    let fixture = makeDeleteSheetFixture(
+        buttonTitles: ["Cancel", "Delete"],
+        sheetDescription: "Delete Track and Cells?"
+    )
+
+    let signals = AccessibilityChannel.readModalSignals(runtime: fixture.runtime)
+    #expect(signals.deleteConfirmButtonPresent)
+    #expect(ModalReconciliation.classify(signals) == .deleteConfirm)
+}
+
+/// The channel-strip sheet that already worked must keep working — the fix
+/// replaced a prefix guess with labelled matching, and dropping this label
+/// while fixing the other would trade one gap for another.
+@Test func testDeleteTracksAndContentSheetStaysRecognized() {
+    let fixture = makeDeleteSheetFixture(
+        buttonTitles: ["Cancel", "Delete Tracks and Content"],
+        sheetDescription: "Delete channel strips?"
+    )
+
+    let signals = AccessibilityChannel.readModalSignals(runtime: fixture.runtime)
+    #expect(signals.deleteConfirmButtonPresent)
+    #expect(signals.deletePrimaryTitle == "Delete Tracks and Content")
+    #expect(ModalReconciliation.classify(signals) == .deleteConfirm)
+}
+
+/// Recognition must not widen into "any sheet with a button". An unrelated
+/// two-button sheet still fails closed — the guard the delete family sits
+/// behind is the whole reason a wrong match is dangerous.
+@Test func testUnrelatedTwoButtonSheetStillFailsClosed() {
+    let fixture = makeDeleteSheetFixture(
+        buttonTitles: ["Cancel", "Save"],
+        sheetDescription: "Save changes before closing?"
+    )
+
+    let signals = AccessibilityChannel.readModalSignals(runtime: fixture.runtime)
+    #expect(!signals.deleteConfirmButtonPresent)
+    #expect(ModalReconciliation.classify(signals) == .unknownSheet)
+    #expect(ModalReconciliation.decide(kind: .unknownSheet, isDeleteContext: true)
+        == .failClosed("unexpected blocking sheet"))
+}
+
+@Test func testDeleteConfirmPrimaryButtonLabelSetEnglishOnly() {
+    #expect(AXLocalePolicy.deleteConfirmPrimaryButton.matches("Delete"))
+    // The exact string the old prefix net could never match.
+    #expect(!"Delete".hasPrefix("Delete "))
+    // KO/JA intentionally absent (unverified) — must not match a guess.
+    #expect(!AXLocalePolicy.deleteConfirmPrimaryButton.matches("삭제"))
 }

@@ -184,12 +184,18 @@ extension AccessibilityChannel {
 
         let createButton = labeled.first { AXLocalePolicy.createButton.matches($0.label, mode: .exact) }
         let cancelButton = labeled.first { AXLocalePolicy.cancelButton.matches($0.label, mode: .exact) }
-        // Delete-confirm primary: localized LabelSet (EN only today) OR the
-        // structural English `Delete ` prefix. The KO title is unverified, so KO
-        // delete-confirm detection degrades to fail-closed + the Return fallback.
+        // Delete-confirm primary: matched against LabelSets ONLY — the
+        // channel-strip sheet's "Delete Tracks and Content" and the per-track
+        // sheets' bare "Delete".
+        //
+        // The structural `label.hasPrefix("Delete ")` net this replaces was
+        // worse than no net: `"Delete".hasPrefix("Delete ")` is false, so it
+        // missed the entire per-track delete family (#545) by one trailing
+        // space while reading as though it covered them. A label the sets do
+        // not know now fails closed honestly instead of being guessed at.
         let deleteButton = labeled.first {
             AXLocalePolicy.deleteTracksPrimaryButton.matches($0.label, mode: .exact)
-                || $0.label.hasPrefix("Delete ")
+                || AXLocalePolicy.deleteConfirmPrimaryButton.matches($0.label, mode: .exact)
         }
         // Fail-closed default: an unreadable enabled state is treated as ENABLED
         // so a normal cancelable sheet is never mistaken for the mandatory one

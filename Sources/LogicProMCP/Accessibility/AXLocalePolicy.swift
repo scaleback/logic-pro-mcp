@@ -279,6 +279,29 @@ enum AXLocalePolicy {
         rationale: "Primary destructive button on the delete-channel-strips confirm sheet; reconciler-clicked with a Return fallback. KO UNVERIFIED → variants empty (fail-closed structural + Return fallback)."
     )
 
+    /// Primary destructive button on Logic's PER-TRACK delete confirm sheets —
+    /// "Delete Track and Regions?" (track carries regions) and "Delete Track
+    /// and Cells?" (Live Loops cells). Both are the same two-button
+    /// Cancel/Delete shape, and the button is labelled just `Delete`, captured
+    /// live upstream on Logic 12.3 (MongLong0214/logic-pro-mcp#545).
+    ///
+    /// This exists because the reconciler used to fall back to a structural
+    /// `label.hasPrefix("Delete ")` check for anything the labelled set missed
+    /// — and `"Delete".hasPrefix("Delete ")` is FALSE, one trailing space away
+    /// from matching. So the whole per-track delete family classified as
+    /// `.unknownSheet` and failed closed, which does not merely refuse the
+    /// delete: it leaves the sheet on screen, and every later operation in any
+    /// surface then returns State C until a human clears it.
+    ///
+    /// KO/JA variants are UNVERIFIED (no live capture), so they stay empty
+    /// rather than be guessed — an unrecognized localized sheet fails closed,
+    /// which is the honest degradation.
+    static let deleteConfirmPrimaryButton = LabelSet(
+        canonical: "Delete",
+        variants: [],
+        rationale: "Primary destructive button on the per-track delete confirm sheets (Regions/Cells variants); labelled exactly 'Delete'. KO/JA UNVERIFIED → variants empty."
+    )
+
     static let saveConfirmationButton = LabelSet(
         canonical: "Save",
         variants: ["저장", "OK", "확인"],
