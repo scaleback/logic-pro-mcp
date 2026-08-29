@@ -61,7 +61,7 @@ extension PluginsDispatcher {
         content[0] = .text(text: echoed, annotations: annotations, _meta: meta)
         return CallTool.Result(
             content: content,
-            structuredContent: structuredContentValue(fromToolText: echoed),
+            structuredContent: structuredContentObject(fromToolText: echoed),
             isError: result.isError,
             _meta: result._meta
         )

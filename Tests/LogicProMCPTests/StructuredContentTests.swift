@@ -120,3 +120,100 @@ struct StructuredContentTests {
         #expect(try canonicalJSONObjectData(structuredObject) == canonicalJSONObjectData(textObject))
     }
 }
+
+/// #544-class: a tool that declares an `outputSchema` must ALWAYS answer with
+/// `structuredContent`, including on the paths whose body is prose rather than
+/// a JSON object.
+///
+/// Reported upstream by Edgar against v3.13.0
+/// (MongLong0214/logic-pro-mcp#544): `structuredContentValue(fromToolText:)`
+/// returns nil unless the text parses as a JSON object, so any handler
+/// answering with a sentence, a help listing, or a bare `true`/`false` came
+/// back with `structuredContent: nil` and a schema-enforcing client refused
+/// the call outright (JSON-RPC -32600).
+///
+/// Every one of these assertions fails without `structuredContentObject`.
+@Suite(.serialized)
+struct OutputSchemaProseContractTests {
+
+    /// The property, read off the registration list rather than restated: no
+    /// tool may advertise an output schema it cannot honour. A newly
+    /// registered tool is covered without anyone remembering to extend a list.
+    @Test("every registered tool advertises an object output schema")
+    func everyRegisteredToolAdvertisesObjectOutputSchema() throws {
+        #expect(!ServerCatalog.tools.isEmpty)
+        for tool in ServerCatalog.tools {
+            let schema = try #require(tool.outputSchema, "\(tool.name) must advertise an outputSchema")
+            let data = try JSONEncoder().encode(schema)
+            let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+            #expect(object["type"] as? String == "object", "\(tool.name) schema must be an object")
+        }
+    }
+
+    @Test("prose bodies carry structuredContent as {message} and leave the text byte-identical")
+    func proseBodiesCarryStructuredContent() throws {
+        let prose = "record_sequence: No project open"
+        let result = toolTextResult(prose, isError: true)
+
+        // The text a caller reads is unchanged — byte-for-byte.
+        #expect(sharedToolText(result) == prose)
+
+        let structured = try #require(
+            result.structuredContent,
+            "a prose body must still carry structuredContent"
+        )
+        let data = try JSONEncoder().encode(structured)
+        let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(object["message"] as? String == prose)
+    }
+
+    /// A bare JSON scalar is not an object either, and this one is
+    /// load-bearing: `SemanticOracleTable.projectIsRunning` requires the body
+    /// to be literally `true` or `false`, so the fix must add structure
+    /// WITHOUT touching the text.
+    @Test("project.is_running keeps its byte-exact body and still carries structuredContent")
+    func projectIsRunningKeepsByteExactBody() async throws {
+        for running in [true, false] {
+            let result = await ProjectDispatcher.handle(
+                command: "is_running",
+                params: [:],
+                router: ChannelRouter(),
+                cache: StateCache(),
+                isLogicProRunning: { running }
+            )
+
+            let text = sharedToolText(result)
+            #expect(text == (running ? "true" : "false"), "oracle requires a byte-exact scalar body")
+
+            let structured = try #require(
+                result.structuredContent,
+                "is_running must carry structuredContent despite its scalar body"
+            )
+            let data = try JSONEncoder().encode(structured)
+            let object = try #require(
+                JSONSerialization.jsonObject(with: data) as? [String: Any],
+                "structuredContent must be a JSON object to satisfy the declared schema"
+            )
+            #expect(object["message"] as? String == text)
+        }
+    }
+
+    /// JSON-object bodies must be passed through UNWRAPPED — a fix that
+    /// nested already-valid answers under `message` would break more than it
+    /// repaired, since callers and the byte-comparison in
+    /// `StructuredContentTests` both expect structuredContent to equal the
+    /// parsed text.
+    @Test("JSON object bodies are passed through, not nested under message")
+    func jsonObjectBodiesArePassedThrough() throws {
+        let json = #"{"success":true,"verified":false,"state":"B"}"#
+        let result = toolTextResult(json)
+
+        let structured = try #require(result.structuredContent)
+        let data = try JSONEncoder().encode(structured)
+        let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+
+        #expect(object["message"] == nil, "a valid object body must not be re-wrapped")
+        #expect(object["state"] as? String == "B")
+        #expect(try canonicalJSONObjectData(object) == canonicalJSONObjectData(#require(sharedJSONObject(json))))
+    }
+}

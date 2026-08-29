@@ -8,7 +8,7 @@ func toolTextContent(_ text: String) -> Tool.Content {
 func toolTextResult(_ text: String, isError: Bool = false) -> CallTool.Result {
     CallTool.Result(
         content: [toolTextContent(text)],
-        structuredContent: structuredContentValue(fromToolText: text),
+        structuredContent: structuredContentObject(fromToolText: text),
         isError: isError
     )
 }
@@ -77,6 +77,31 @@ func structuredContentValue(fromToolText text: String) -> Value? {
         return nil
     }
     return try? JSONDecoder().decode(Value.self, from: data)
+}
+
+/// `structuredContent` for a tool response, guaranteed to be a JSON OBJECT.
+///
+/// Every tool this server registers declares an `outputSchema` of type
+/// `object` (see `ServerCatalog.tools`). MCP requires a tool that advertises
+/// an output schema to answer with `structuredContent` conforming to it, so
+/// a response whose body is not a JSON object — a prose error sentence, a
+/// help listing, a bare `true`/`false` — used to come back with
+/// `structuredContent: nil` and be refused outright by a schema-enforcing
+/// client (JSON-RPC -32600). Reported upstream by Edgar against v3.13.0 as
+/// MongLong0214/logic-pro-mcp#544.
+///
+/// Prose is therefore carried as `{"message": …}` rather than dropped. The
+/// `content` text is left BYTE-IDENTICAL: callers that read the text see no
+/// change, and byte-exact response oracles keep passing — notably
+/// `SemanticOracleTable.projectIsRunning`, which requires the body to be
+/// literally `true` or `false`.
+///
+/// Returns `Value?` although it never yields nil: `CallTool.Result`'s
+/// non-optional `structuredContent` overload is throwing, and an Optional
+/// selects the plain one. The guarantee callers rely on is the return VALUE
+/// always being `.object`, not its static optionality.
+func structuredContentObject(fromToolText text: String) -> Value? {
+    structuredContentValue(fromToolText: text) ?? .object(["message": .string(text)])
 }
 
 func genericObjectOutputSchema() -> Value {

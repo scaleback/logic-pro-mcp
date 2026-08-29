@@ -581,6 +581,7 @@ struct OperationRegistryTests {
         ("project.save_as", "save_as", .mutating, .long, .readbackRequired),
         ("project.close", "close", .mutating, .medium, .none),
         ("project.bounce", "bounce", .mutating, .long, .readbackRequired),
+        ("project.bounce_region", "bounce_region", .mutating, .long, .readbackRequired),
         ("project.is_running", "is_running", .readOnly, .short, .none),
         ("project.launch", "launch", .mutating, .short, .readbackRequired),
         ("project.quit", "quit", .mutating, .medium, .readbackRequired),
@@ -607,6 +608,7 @@ struct OperationRegistryTests {
         ("logic_project", "open", .l2),
         ("logic_project", "save_as", .l2),
         ("logic_project", "bounce", .l2),
+        ("logic_project", "bounce_region", .l2),
         ("logic_project", "export_run", .l2),
         ("logic_project", "export_resume", .l2),
         ("logic_mixer", "insert_plugin", .l2),
@@ -674,6 +676,8 @@ struct OperationRegistryTests {
         #expect(expected == Set([
             "new", "open", "save", "save_as", "close", "bounce", "launch", "quit",
             "export_run", "export_resume", "cleanup_apply",
+            // Fase 3: region ops wired into logic_project.
+            "select_last_region", "move_region_to_playhead", "bounce_region",
         ]))
         #expect(OperationRegistry.mutatingCommands(tool: tool) == expected)
         for entry in Self.projectCommands {
@@ -684,9 +688,10 @@ struct OperationRegistryTests {
 
     @Test("project deadlines exactly match registry short medium and long tiers")
     func projectDeadlineParity() {
-        #expect(Self.projectCommands.filter { $0.deadline == .short }.count == 6)
+        #expect(Self.projectCommands.filter { $0.deadline == .short }.count == 8)
         #expect(Self.projectCommands.filter { $0.deadline == .medium }.count == 5)
-        #expect(Self.projectCommands.filter { $0.deadline == .long }.count == 5)
+        #expect(Self.projectCommands.filter { $0.deadline == .long }.count == 6)
+        #expect(Self.projectCommands.count == 19)
 
         for entry in Self.projectCommands {
             #expect(OperationRegistry.deadlineSeconds(tool: "logic_project", command: entry.command)

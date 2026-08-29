@@ -351,7 +351,7 @@ extension OperationTraceDispatching {
         content[0] = .text(text: merged, annotations: annotations, _meta: meta)
         return CallTool.Result(
             content: content,
-            structuredContent: structuredContentValue(fromToolText: merged),
+            structuredContent: structuredContentObject(fromToolText: merged),
             isError: result.isError,
             _meta: result._meta
         )
