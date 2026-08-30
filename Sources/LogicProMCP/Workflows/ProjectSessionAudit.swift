@@ -430,7 +430,7 @@ enum ProjectSessionAudit {
                     count: snapshot.regions.count,
                     freshness: freshness(
                         fetchedAt: snapshot.regionsFetchedAt,
-                        fallbackProvenance: snapshot.regionsComplete ? "ax_live" : "ax_visible_subset",
+                        fallbackProvenance: snapshot.regionsComplete ? "ax_live" : "ax_exposed_subset",
                         now: snapshot.now
                     )
                 ),
@@ -620,11 +620,11 @@ enum ProjectSessionAudit {
                 "region_inventory_partial",
                 .warn,
                 "export",
-                "Region inventory covers only the visible arrange area; hidden or scrolled lanes may contain additional regions.",
+                "Region inventory covers only what Logic's AX tree exposes; the project may contain additional regions it does not materialize.",
                 "logic://project/audit",
                 nil,
-                ["complete=false", "scope=visible_arrange_area", "visible_region_count=\(snapshot.regions.count)"],
-                "ax_visible_subset"
+                ["complete=false", "scope=ax_exposed_regions", "exposed_region_count=\(snapshot.regions.count)"],
+                "ax_exposed_subset"
             ))
         } else if !emptyTracks.isEmpty {
             findings.append(finding(

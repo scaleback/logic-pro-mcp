@@ -233,7 +233,7 @@ enum SemanticOracleFixtures {
             response: """
                 {"regions":[{"name":"Audio 1","trackIndex":0,"startBar":1,"endBar":5,\
                 "kind":"audio","rawHelp":null}],"complete":false,\
-                "scope":"visible_arrange_area","reason":"logic_ax_viewport_only",\
+                "scope":"ax_exposed_regions","reason":"logic_ax_exposure_only",\
                 "returned_count":1,"_debug":{"layoutItems":1,"nonRegion":0}}
                 """,
             readback: "{\"cache_age_sec\":1.0,\"fetched_at\":null,\"ax_occluded\":false,"

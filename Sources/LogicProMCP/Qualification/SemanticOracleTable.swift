@@ -789,14 +789,17 @@ enum SemanticOracleTable {
 
     // AccessibilityChannel+Regions `defaultGetRegions` → RegionInventoryPayload.
     // complete/scope/reason are hardcoded honesty disclaimers: this read only
-    // ever sees the visible arrange viewport, and it must never claim otherwise.
+    // only ever sees what Logic's AX tree exposes, and it must never claim
+    // otherwise. Since 2026-08-17 that INCLUDES regions scrolled out of view
+    // (the frame-intersection filter was removed), so the disclaimer is about
+    // AX materialization, not about the viewport.
     static let projectGetRegions = OperationOracle(
         .projectGetRegions,
         strength: .shapeAndDomain,
         constraints: [
             .valueEquals(key: "complete", expected: .bool(false)),
-            .valueEquals(key: "scope", expected: .string("visible_arrange_area")),
-            .valueEquals(key: "reason", expected: .string("logic_ax_viewport_only")),
+            .valueEquals(key: "scope", expected: .string("ax_exposed_regions")),
+            .valueEquals(key: "reason", expected: .string("logic_ax_exposure_only")),
             .numericRange(key: "returned_count", min: 0, max: 100_000),
             .typedField(key: "regions", type: .array),
         ]

@@ -33,8 +33,8 @@ extension AccessibilityChannel {
             return encodeResult(RegionInventoryPayload(
                 regions: regions,
                 complete: false,
-                scope: "visible_arrange_area",
-                reason: "logic_ax_viewport_only",
+                scope: "ax_exposed_regions",
+                reason: "logic_ax_exposure_only",
                 returnedCount: regions.count,
                 debug: RegionInventoryPayload.Debug(
                     layoutItems: result.layoutItemCount,

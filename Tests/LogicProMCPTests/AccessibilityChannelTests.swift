@@ -1393,8 +1393,8 @@ private final class MarkerWindowReadSequence: @unchecked Sendable {
         JSONSerialization.jsonObject(with: Data(result.message.utf8)) as? [String: Any]
     )
     #expect(!((payload["complete"] as? Bool)!))
-    #expect(payload["scope"] as? String == "visible_arrange_area")
-    #expect(payload["reason"] as? String == "logic_ax_viewport_only")
+    #expect(payload["scope"] as? String == "ax_exposed_regions")
+    #expect(payload["reason"] as? String == "logic_ax_exposure_only")
     #expect(payload["returned_count"] as? Int == 3)
     let regionValue = try #require(payload["regions"])
     let regionData = try JSONSerialization.data(withJSONObject: regionValue)

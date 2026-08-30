@@ -76,7 +76,7 @@ private func makeAuditSnapshot(
 
     let partial = try #require(report.findings.first { $0.id == "region_inventory_partial" })
     #expect(partial.severity == .warn)
-    #expect(partial.provenance == "ax_visible_subset")
+    #expect(partial.provenance == "ax_exposed_subset")
     #expect(report.evidence.exportReadiness.warnings.contains("region_inventory_partial"))
     #expect(!report.findings.contains { $0.id == "empty_tracks_detected" })
 }
