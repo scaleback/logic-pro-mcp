@@ -582,6 +582,7 @@ struct OperationRegistryTests {
         ("project.close", "close", .mutating, .medium, .none),
         ("project.bounce", "bounce", .mutating, .long, .readbackRequired),
         ("project.bounce_region", "bounce_region", .mutating, .long, .readbackRequired),
+        ("project.trim_region", "trim_region", .mutating, .medium, .readbackRequired),
         ("project.is_running", "is_running", .readOnly, .short, .none),
         ("project.launch", "launch", .mutating, .short, .readbackRequired),
         ("project.quit", "quit", .mutating, .medium, .readbackRequired),
@@ -677,7 +678,7 @@ struct OperationRegistryTests {
             "new", "open", "save", "save_as", "close", "bounce", "launch", "quit",
             "export_run", "export_resume", "cleanup_apply",
             // Fase 3: region ops wired into logic_project.
-            "select_last_region", "move_region_to_playhead", "bounce_region",
+            "select_last_region", "move_region_to_playhead", "bounce_region", "trim_region",
         ]))
         #expect(OperationRegistry.mutatingCommands(tool: tool) == expected)
         for entry in Self.projectCommands {
@@ -689,9 +690,9 @@ struct OperationRegistryTests {
     @Test("project deadlines exactly match registry short medium and long tiers")
     func projectDeadlineParity() {
         #expect(Self.projectCommands.filter { $0.deadline == .short }.count == 8)
-        #expect(Self.projectCommands.filter { $0.deadline == .medium }.count == 5)
+        #expect(Self.projectCommands.filter { $0.deadline == .medium }.count == 6)
         #expect(Self.projectCommands.filter { $0.deadline == .long }.count == 6)
-        #expect(Self.projectCommands.count == 19)
+        #expect(Self.projectCommands.count == 20)
 
         for entry in Self.projectCommands {
             #expect(OperationRegistry.deadlineSeconds(tool: "logic_project", command: entry.command)

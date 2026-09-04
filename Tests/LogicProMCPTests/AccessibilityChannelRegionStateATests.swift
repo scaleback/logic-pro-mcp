@@ -826,3 +826,267 @@ private func addFakeTrackHeader(to builder: FakeAXRuntimeBuilder, existingHeader
     }
     #expect(message.contains("ax_write_failed"))
 }
+
+// MARK: - region.trim — State A/B/C paths
+
+private func trimHelp(start: Int, end: Int) -> String {
+    "리전은 \(start) 마디 에서 시작하여 \(end) 마디 에서 끝납니다., MIDI 리전."
+}
+
+private func makeTrimFixture(startBar: Int = 2, endBar: Int = 19) -> RegionFakeFixture {
+    makeRegionFixture(
+        headers: [(axPoint(0, 100), axSize(200, 40))],
+        regions: [(
+            name: "RegionA",
+            help: trimHelp(start: startBar, end: endBar),
+            pos: axPoint(240, 108),
+            size: axSize(320, 24),
+            selected: true
+        )],
+        playheadPosition: "1.1.1.1"
+    )
+}
+
+@Test func testTrimReturnsStateAWhenBothEdgesLand() async {
+    // Trim start to bar 5 and end to bar 12; Logic reports the region at
+    // exactly those bars afterward → State A verified:true.
+    let fixture = makeTrimFixture()
+
+    let result = await AccessibilityChannel.defaultTrimSelectedRegion(
+        params: ["start_bar": "5", "end_bar": "12"],
+        runtime: fixture.runtime,
+        executeScript: { _ in .success("OK") },
+        settle: { },
+        gotoBar: { _ in
+            fixture.builder.setAttribute(
+                fixture.builder.element(3_000),
+                kAXHelpAttribute as String,
+                trimHelp(start: 5, end: 12)
+            )
+            return .success("{\"state\":\"A\"}")
+        }
+    )
+
+    #expect(result.isSuccess)
+    let obj = decodeJSON(result.message)
+    #expect((obj["success"] as? Bool)!)
+    #expect((obj["verified"] as? Bool)!)
+    #expect(obj["requested_start_bar"] as? Int == 5)
+    #expect(obj["requested_end_bar"] as? Int == 12)
+    #expect(obj["post_start_bar"] as? Int == 5)
+    #expect(obj["post_end_bar"] as? Int == 12)
+    #expect(obj["pre_start_bar"] as? Int == 2)
+}
+
+@Test func testTrimAcceptsASingleEdge() async {
+    // Only start_bar given: the end is left alone and must NOT be required to
+    // match anything, or a one-sided trim could never reach State A.
+    let fixture = makeTrimFixture()
+
+    let result = await AccessibilityChannel.defaultTrimSelectedRegion(
+        params: ["start_bar": "7"],
+        runtime: fixture.runtime,
+        executeScript: { _ in .success("OK") },
+        settle: { },
+        gotoBar: { _ in
+            fixture.builder.setAttribute(
+                fixture.builder.element(3_000),
+                kAXHelpAttribute as String,
+                trimHelp(start: 7, end: 19)
+            )
+            return .success("{\"state\":\"A\"}")
+        }
+    )
+
+    let obj = decodeJSON(result.message)
+    #expect((obj["verified"] as? Bool)!)
+    #expect(obj["post_start_bar"] as? Int == 7)
+    #expect(obj["requested_end_bar"] == nil)
+}
+
+@Test func testTrimFailsClosedWithNoBars() async {
+    let fixture = makeTrimFixture()
+    let result = await AccessibilityChannel.defaultTrimSelectedRegion(
+        params: [:],
+        runtime: fixture.runtime,
+        executeScript: { _ in
+            Issue.record("no shortcut may be sent when neither bar was given")
+            return .success("OK")
+        },
+        settle: { },
+        gotoBar: { _ in
+            Issue.record("the playhead must not move when neither bar was given")
+            return .success("{}")
+        }
+    )
+
+    guard case .error(let message) = result else {
+        Issue.record("expected .error, got \(result)")
+        return
+    }
+    #expect(message.contains("invalid_params"))
+    #expect(message.contains("start_bar"))
+}
+
+@Test func testTrimFailsClosedWhenStartIsNotBeforeEnd() async {
+    let fixture = makeTrimFixture()
+    let result = await AccessibilityChannel.defaultTrimSelectedRegion(
+        params: ["start_bar": "9", "end_bar": "9"],
+        runtime: fixture.runtime,
+        executeScript: { _ in
+            Issue.record("no shortcut may be sent for an inverted range")
+            return .success("OK")
+        },
+        settle: { },
+        gotoBar: { _ in .success("{}") }
+    )
+
+    guard case .error(let message) = result else {
+        Issue.record("expected .error, got \(result)")
+        return
+    }
+    #expect(message.contains("invalid_params"))
+}
+
+@Test func testTrimFailsClosedOnBarBelowOne() async {
+    let fixture = makeTrimFixture()
+    let result = await AccessibilityChannel.defaultTrimSelectedRegion(
+        params: ["start_bar": "0"],
+        runtime: fixture.runtime,
+        executeScript: { _ in
+            Issue.record("no shortcut may be sent for an out-of-range bar")
+            return .success("OK")
+        },
+        settle: { },
+        gotoBar: { _ in .success("{}") }
+    )
+
+    guard case .error(let message) = result else {
+        Issue.record("expected .error, got \(result)")
+        return
+    }
+    #expect(message.contains("invalid_params"))
+}
+
+@Test func testTrimFailsClosedWhenNothingSelected() async {
+    let fixture = makeRegionFixture(
+        headers: [(axPoint(0, 100), axSize(200, 40))],
+        regions: [(
+            name: "RegionA", help: trimHelp(start: 2, end: 19),
+            pos: axPoint(240, 108), size: axSize(320, 24), selected: false
+        )],
+        playheadPosition: "1.1.1.1"
+    )
+
+    let result = await AccessibilityChannel.defaultTrimSelectedRegion(
+        params: ["start_bar": "5"],
+        runtime: fixture.runtime,
+        executeScript: { _ in
+            Issue.record("no shortcut may be sent when nothing is selected")
+            return .success("OK")
+        },
+        settle: { },
+        gotoBar: { _ in
+            Issue.record("the playhead must not move when nothing is selected")
+            return .success("{}")
+        }
+    )
+
+    guard case .error(let message) = result else {
+        Issue.record("expected .error, got \(result)")
+        return
+    }
+    #expect(message.contains("element_not_found"))
+    #expect(message.contains("no region is currently selected"))
+}
+
+/// The goto is a hard precondition: the trim commands act on wherever the
+/// playhead IS, so firing the chord after a goto that silently failed would
+/// trim to the wrong bar and still look like it worked.
+@Test func testTrimFailsClosedWhenThePlayheadDoesNotMove() async {
+    let fixture = makeTrimFixture()
+    let result = await AccessibilityChannel.defaultTrimSelectedRegion(
+        params: ["start_bar": "5"],
+        runtime: fixture.runtime,
+        executeScript: { _ in
+            Issue.record("the shortcut must not be sent after a failed goto")
+            return .success("OK")
+        },
+        settle: { },
+        gotoBar: { _ in .error("bar slider unreachable") }
+    )
+
+    guard case .error(let message) = result else {
+        Issue.record("expected .error, got \(result)")
+        return
+    }
+    #expect(message.contains("ax_write_failed"))
+    #expect(message.contains("could not move the playhead"))
+}
+
+@Test func testTrimReturnsStateCOnKeystrokeError() async {
+    let fixture = makeTrimFixture()
+    let result = await AccessibilityChannel.defaultTrimSelectedRegion(
+        params: ["start_bar": "5"],
+        runtime: fixture.runtime,
+        executeScript: { _ in .success("KEYSTROKE_ERROR: System Events is not enabled") },
+        settle: { },
+        gotoBar: { _ in .success("{}") }
+    )
+
+    guard case .error(let message) = result else {
+        Issue.record("expected .error, got \(result)")
+        return
+    }
+    #expect(message.contains("ax_write_failed"))
+}
+
+@Test func testTrimReturnsStateBWhenSelectionLostAfterTrim() async {
+    let fixture = makeTrimFixture()
+    let result = await AccessibilityChannel.defaultTrimSelectedRegion(
+        params: ["start_bar": "5"],
+        runtime: fixture.runtime,
+        executeScript: { _ in
+            fixture.builder.setAttribute(
+                fixture.builder.element(3_000), kAXSelectedAttribute as String, false
+            )
+            return .success("OK")
+        },
+        settle: { },
+        gotoBar: { _ in .success("{}") }
+    )
+
+    #expect(result.isSuccess)
+    let obj = decodeJSON(result.message)
+    #expect((obj["success"] as? Bool) == false)
+    #expect(obj["reason"] as? String == "readback_unavailable")
+}
+
+/// The edge did not land where it was asked to. The write happened, so this is
+/// State B with both numbers on the record — never a silent success.
+@Test func testTrimReturnsStateBWhenTheEdgeDoesNotLand() async {
+    let fixture = makeTrimFixture()
+    let result = await AccessibilityChannel.defaultTrimSelectedRegion(
+        params: ["start_bar": "5"],
+        runtime: fixture.runtime,
+        executeScript: { _ in .success("OK") },
+        settle: { },
+        gotoBar: { _ in
+            // Landed at bar 9, not the requested 5 — well outside the ±1
+            // tolerance the rest of this file uses.
+            fixture.builder.setAttribute(
+                fixture.builder.element(3_000),
+                kAXHelpAttribute as String,
+                trimHelp(start: 9, end: 19)
+            )
+            return .success("{}")
+        }
+    )
+
+    #expect(result.isSuccess)
+    let obj = decodeJSON(result.message)
+    #expect((obj["success"] as? Bool) == false)
+    #expect(obj["reason"] as? String == "readback_mismatch")
+    #expect(obj["requested_start_bar"] as? Int == 5)
+    #expect(obj["post_start_bar"] as? Int == 9)
+}

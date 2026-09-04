@@ -79,6 +79,9 @@ enum OperationID: String, CaseIterable, Codable, Sendable, Hashable {
     // and verifies via AX readback (midi→audio, same position) rather than
     // sending the keystroke blind. See AccessibilityChannel+Regions.swift.
     case projectBounceRegion = "project.bounce_region"
+    /// Fase 3 (tarea #21): trim the selected region's start/end to a bar, by
+    /// parking the playhead and firing Logic's own trim-to-playhead commands.
+    case projectTrimRegion = "project.trim_region"
     case projectExportPlan = "project.export_plan"
     case projectExportRun = "project.export_run"
     case projectExportResume = "project.export_resume"
@@ -331,6 +334,7 @@ enum OperationRegistry {
             "project.bounce", "project.is_running", "project.launch", "project.quit",
             "project.get_regions", "project.select_last_region", "project.move_region_to_playhead",
             "project.bounce_region",
+            "project.trim_region",
             "project.export_plan", "project.export_run",
             "project.export_resume", "project.audit", "project.cleanup_plan",
             "project.cleanup_apply",
@@ -387,6 +391,7 @@ enum OperationRegistry {
             "new", "open", "save", "save_as", "close", "bounce", "is_running", "launch",
             "quit", "get_regions", "select_last_region", "move_region_to_playhead",
             "bounce_region",
+            "trim_region",
             "export_plan", "export_run", "export_resume", "audit",
             "cleanup_plan", "cleanup_apply",
         ],
@@ -813,6 +818,11 @@ enum OperationRegistry {
         // DeadlineClass.long to match project.bounce: real audio rendering
         // takes longer to settle than an AX write.
         (.projectBounceRegion, "bounce_region", Mutability.`mutating`, ConfirmationPolicy.l2, VerificationPolicy.readbackRequired, DeadlineClass.long, ["confirmed"]),
+        // No confirmation: a trim adjusts region BOUNDARIES and is undoable —
+        // closer to move_region_to_playhead (also unconfirmed) than to
+        // edit.cut/edit.delete. Requiring consent on a routine editing move
+        // would be friction without a matching risk.
+        (.projectTrimRegion, "trim_region", Mutability.`mutating`, ConfirmationPolicy.none, VerificationPolicy.readbackRequired, DeadlineClass.medium, ["start_bar", "end_bar"]),
         (
             .projectExportPlan,
             "export_plan",

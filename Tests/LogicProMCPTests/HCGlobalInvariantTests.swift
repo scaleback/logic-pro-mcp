@@ -309,6 +309,7 @@ struct HCGlobalInvariantTests {
             RouteCase(tool: "logic_project", command: "select_last_region", params: [:], operation: "region.select_last", destinations: [], invariant: .minimumV1),
             RouteCase(tool: "logic_project", command: "move_region_to_playhead", params: [:], operation: "region.move_to_playhead", destinations: [], invariant: .minimumV1),
             RouteCase(tool: "logic_project", command: "bounce_region", params: ["confirmed": .bool(true)], operation: "region.bounce", destinations: [], invariant: .minimumV1),
+            RouteCase(tool: "logic_project", command: "trim_region", params: ["start_bar": .int(2)], operation: "region.trim", destinations: [], invariant: .minimumV1),
 
             RouteCase(tool: "logic_system", command: "export_support_bundle", params: ["dir": .string(fixtures.supportBundlePath)], operation: "system.export_support_bundle", destinations: [], invariant: .minimumV1),
             RouteCase(tool: "logic_system", command: "saga_execute", params: [:], operation: "system.saga_execute", destinations: [], invariant: .minimumV1),

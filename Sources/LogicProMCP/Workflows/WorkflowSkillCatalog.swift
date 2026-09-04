@@ -543,6 +543,7 @@ enum WorkflowSkillCatalog {
             "new", "open", "save", "save_as", "close", "bounce",
             "is_running", "get_regions", "select_last_region", "move_region_to_playhead",
             "bounce_region",
+            "trim_region",
             "export_plan", "export_run", "export_resume",
             "audit", "cleanup_plan", "cleanup_apply", "launch", "quit",
         ],

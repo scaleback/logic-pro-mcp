@@ -163,6 +163,8 @@ struct OperationCatalogTests {
         .projectSaveAs: ["confirmed", "path"],
         .projectClose: ["confirmed", "saving"],
         .projectBounce: ["confirmed"],
+        .projectBounceRegion: ["confirmed"],
+        .projectTrimRegion: ["end_bar", "start_bar"],
         .projectQuit: ["confirmed"],
         .projectExportPlan: [
             "artifact", "artifacts", "collision_policy", "kind", "naming_policy",
@@ -399,7 +401,7 @@ struct OperationCatalogTests {
                     ("get_trace", "system.get_trace", ["trace_id"], .none),
                     ("clear_traces", "system.clear_traces", ["confirmed"], .l2),
                 ]
-                #expect(OperationRegistry.specs.count == 113)
+                #expect(OperationRegistry.specs.count == 114)
                 for (command, operationID, allowedParams, confirmation) in expectedSpecs {
                     let spec = OperationRegistry.spec(tool: "logic_system", command: command)
                     #expect(spec?.id.rawValue == operationID, "\(command) must have one public spec")
@@ -725,7 +727,7 @@ struct OperationCatalogTests {
 
     @Test("strict: every registered operation rejects unknown keys and accepts its pinned keys")
     func strictRegistryWideInvariant() throws {
-        #expect(OperationRegistry.specs.count == 113)
+        #expect(OperationRegistry.specs.count == 114)
         #expect(Set(OperationRegistry.specs.map(\.id)) == Set(OperationID.allCases))
 
         for spec in OperationRegistry.specs {
@@ -905,7 +907,7 @@ struct OperationCatalogTests {
         #expect(body["generated_at"] as? String != nil)
         #expect(body["operation_count"] as? Int == OperationRegistry.specs.count)
         let operations = try #require(body["operations"] as? [[String: Any]])
-        #expect(operations.count == 113)
+        #expect(operations.count == 114)
         #expect(!text.contains("\n"))
 
         let ids = operations.compactMap { $0["id"] as? String }

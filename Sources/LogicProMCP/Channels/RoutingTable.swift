@@ -267,6 +267,7 @@ extension ChannelRouter {
         "region.select_last":         [.accessibility],
         "region.move_to_playhead":    [.accessibility],
         "region.bounce":              [.accessibility],
+        "region.trim":                [.accessibility],
         "region.loop":                [.accessibility, .cgEvent],
         "region.set_name":            [.accessibility],
         "region.move":                [.accessibility],

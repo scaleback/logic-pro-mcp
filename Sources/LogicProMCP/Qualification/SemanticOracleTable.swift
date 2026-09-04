@@ -423,6 +423,11 @@ enum SemanticOracleTable {
             + "does reach a real State A when the selected region is audio at the same "
             + "track/bar post-bounce. Follow-up work, not a structural limit; tracked in "
             + "HANDOFF.md",
+        .projectTrimRegion:
+            "no semantic oracle built yet — NOT send-only: defaultTrimSelectedRegion "
+            + "does reach a real State A when every requested edge reads back at the "
+            + "requested bar. Follow-up work, not a structural limit; tracked in "
+            + "HANDOFF.md",
     ]
 
     /// Mutating ops that never enter the oracle surface at all because the

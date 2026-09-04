@@ -790,4 +790,167 @@ extension AccessibilityChannel {
         }
     }
 
+    /// Trim the selected region's start and/or end to a musical bar.
+    ///
+    /// Coordinate-free by construction: instead of writing pixel geometry, it
+    /// parks the playhead on the requested bar and fires Logic's own
+    /// "Trim Region Start/End to Playhead Position" key commands. Writing
+    /// `kAXPositionAttribute`/`kAXSizeAttribute` was considered and rejected —
+    /// this project has never written AX geometry (only read it), an
+    /// AXLayoutItem region is a drawn report rather than a settable control,
+    /// and turning bars into pixels would reintroduce the zoom-dependent
+    /// fragility the coordinate-free work exists to avoid.
+    ///
+    /// Both chords were assigned by the user and CONFIRMED BY HAND before any
+    /// of this was written (`⌃⌥⇧,` start, `⌃⌥⇧.` end): the previous region op
+    /// cost seven live deploy cycles to an unverified shortcut assumption, so
+    /// a chord is never taken on faith here again. They are sent as `key code`
+    /// (43 = comma, 47 = period) rather than `keystroke ","`, because with
+    /// Shift held a character keystroke can arrive as `<` / `>`.
+    ///
+    /// SIDE EFFECT, deliberate and disclosed: this moves the playhead, and
+    /// does not restore it. The trim commands are defined relative to the
+    /// playhead, so there is no version of this that leaves it untouched.
+    ///
+    /// State A requires every edge the caller asked for to read back at the
+    /// requested bar (±1, the same tolerance `move_to_playhead` uses). A bar
+    /// that did not land, a lost selection, or a region that moved instead of
+    /// resizing is State B — never a silently-assumed success.
+    static func defaultTrimSelectedRegion(
+        params: [String: String],
+        runtime: AXLogicProElements.Runtime = .production,
+        executeScript: @Sendable (String) async -> ChannelResult = { await AppleScriptChannel.executeAppleScript($0) },
+        settle: @Sendable () async -> Void = { try? await Task.sleep(nanoseconds: 700_000_000) },
+        gotoBar: (@Sendable (Int) async -> ChannelResult)? = nil
+    ) async -> ChannelResult {
+        let startBar = params["start_bar"].flatMap(Int.init)
+        let endBar = params["end_bar"].flatMap(Int.init)
+
+        if startBar == nil && endBar == nil {
+            return .error(HonestContract.encodeStateC(
+                error: .invalidParams,
+                hint: "region.trim: needs at least one of 'start_bar' or 'end_bar' (Int ≥ 1)"
+            ))
+        }
+        for (label, value) in [("start_bar", startBar), ("end_bar", endBar)] {
+            if let value, value < 1 {
+                return .error(HonestContract.encodeStateC(
+                    error: .invalidParams,
+                    hint: "region.trim: '\(label)' must be ≥ 1 (got \(value))"
+                ))
+            }
+        }
+        if let s = startBar, let e = endBar, s >= e {
+            return .error(HonestContract.encodeStateC(
+                error: .invalidParams,
+                hint: "region.trim: 'start_bar' (\(s)) must be before 'end_bar' (\(e))"
+            ))
+        }
+
+        guard let pre = selectedRegionInfo(runtime: runtime) else {
+            return .error(HonestContract.encodeStateC(
+                error: .elementNotFound,
+                hint: "region.trim: no region is currently selected — select one first "
+                    + "(region.select_last, or click a region in Logic) before trimming"
+            ))
+        }
+
+        let goto = gotoBar ?? { bar in
+            await gotoPositionViaBarSlider(params: ["bar": "\(bar)"], runtime: runtime)
+        }
+
+        // Trim edges one at a time: park the playhead, then fire that edge's
+        // command. Order matters only in that each command reads wherever the
+        // playhead is at that moment, so the goto must be verified before the
+        // chord is sent — a goto that silently failed would trim to the WRONG
+        // bar and still look like it worked.
+        for (bar, keyCode, edge) in [
+            (startBar, 43, "start"),
+            (endBar, 47, "end"),
+        ].compactMap({ triple -> (Int, Int, String)? in
+            guard let bar = triple.0 else { return nil }
+            return (bar, triple.1, triple.2)
+        }) {
+            let moved = await goto(bar)
+            guard moved.isSuccess else {
+                return .error(HonestContract.encodeStateC(
+                    error: .axWriteFailed,
+                    hint: "region.trim: could not move the playhead to bar \(bar) for the \(edge) trim: \(moved.message)"
+                ))
+            }
+
+            let result = await executeScript(trimChordScript(keyCode: keyCode))
+            switch result {
+            case .error(let msg):
+                return .error(HonestContract.encodeStateC(
+                    error: .axWriteFailed,
+                    hint: "region.trim: failed to send the \(edge)-trim shortcut: \(msg)"
+                ))
+            case .success(let output):
+                if output.hasPrefix("KEYSTROKE_ERROR") {
+                    return .error(HonestContract.encodeStateC(
+                        error: .axWriteFailed,
+                        hint: "region.trim \(edge) keystroke failed: \(output)"
+                    ))
+                }
+            }
+        }
+
+        await settle()
+
+        var extras: [String: Any] = [
+            "via": "system_events_key_code",
+            "pre_name": pre.name,
+            "pre_track_index": pre.trackIndex,
+            "pre_start_bar": pre.startBar,
+            "pre_end_bar": pre.endBar,
+        ]
+        if let startBar { extras["requested_start_bar"] = startBar }
+        if let endBar { extras["requested_end_bar"] = endBar }
+
+        guard let post = selectedRegionInfo(runtime: runtime) else {
+            return .success(HonestContract.encodeStateB(
+                reason: .readbackUnavailable,
+                extras: extras.merging(["note": "no selected region after trim"]) { _, new in new }
+            ))
+        }
+
+        extras["post_name"] = post.name
+        extras["post_track_index"] = post.trackIndex
+        extras["post_start_bar"] = post.startBar
+        extras["post_end_bar"] = post.endBar
+
+        let startMatches = startBar.map { abs(post.startBar - $0) <= 1 } ?? true
+        let endMatches = endBar.map { abs(post.endBar - $0) <= 1 } ?? true
+
+        if startMatches && endMatches {
+            return .success(HonestContract.encodeStateA(extras: extras))
+        }
+        return .success(HonestContract.encodeStateB(
+            reason: .readbackMismatch,
+            extras: extras
+        ))
+    }
+
+    /// One trim chord as a System Events script. `key code` rather than
+    /// `keystroke` because these chords hold Shift, and a character keystroke
+    /// under Shift can arrive as the shifted glyph (`<` for `,`) instead.
+    private static func trimChordScript(keyCode: Int) -> String {
+        let target = LogicProTarget.appleScriptTarget()
+        return """
+        \(target.activateByBundleID)
+        delay 0.1
+        tell application "System Events"
+            tell \(target.systemEventsProcessTarget)
+                try
+                    key code \(keyCode) using {control down, option down, shift down}
+                    return "OK"
+                on error errMsg
+                    return "KEYSTROKE_ERROR: " & errMsg
+                end try
+            end tell
+        end tell
+        """
+    }
+
 }
