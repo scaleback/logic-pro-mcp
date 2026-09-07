@@ -1559,9 +1559,15 @@ struct CoordFreeTrackToggleTests {
 
         #expect(!result.isSuccess)
         let obj = object(result.message)
-        #expect((obj?["error"] as? String)! == "unsafe_focus_for_synthetic_key")
+        // Compared without force-unwrapping. When the expectation above fails the
+        // envelope is a SUCCESS and carries no "error" key, so `!` here does not
+        // report a failed test — it traps and kills the whole test process,
+        // truncating every suite scheduled after it. Measured 2026-09-05: with
+        // the `!`, the run dies deterministically after 639 tests; without it,
+        // all 3561 run and 10 long-hidden pre-existing failures become visible.
+        #expect(obj?["error"] as? String == "unsafe_focus_for_synthetic_key")
         #expect(key.keyEvents.isEmpty)
-        #expect(!boolValue(f, f.mute[0])!)
+        #expect(boolValue(f, f.mute[0]) == false)
     }
 
     @Test("#6 focus gate: a focused editable text field ⇒ mute refuses the synthetic key (unsafe_focus_for_synthetic_key)")

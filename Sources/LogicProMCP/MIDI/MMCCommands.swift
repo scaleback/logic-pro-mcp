@@ -68,6 +68,18 @@ enum MMCCommands {
             }
         }
 
+        /// How this rate is spelled in `LOGIC_MCP_PROJECT_FPS` and echoed back
+        /// in receipts — the way it reads in Logic's own Synchronization pane,
+        /// so a mismatch is spottable without decoding an internal token.
+        var configKey: String {
+            switch self {
+            case .fps24: return "24"
+            case .fps25: return "25"
+            case .fps29_97df: return "29.97"
+            case .fps30: return "30"
+            }
+        }
+
         /// Nominal frames per second for bar/beat → SMPTE conversion.
         var fps: Double {
             switch self {
@@ -178,12 +190,24 @@ enum MMCCommands {
     // MARK: - Bar/beat → SMPTE conversion
 
     /// Convert a musical position to SMPTE time components.
+    ///
     /// - Parameters:
     ///   - bar: 1-indexed bar number.
     ///   - beat: 1-indexed beat within the bar (fractional allowed, e.g. 2.5).
     ///   - tempo: BPM (must be > 0).
     ///   - beatsPerBar: numerator of the time signature (must be > 0).
-    ///   - frameRate: SMPTE frame rate used to quantise frames + cap maxFrame.
+    ///   - frameRate: SMPTE frame rate. MUST match the project's own frame
+    ///     rate. Logic compares the rate encoded in the LOCATE against the
+    ///     project's and, on a mismatch, raises a modal asking which to keep
+    ///     (measured live 2026-09-05: we sent 30 fps to a 25 fps project). That
+    ///     modal then blocks every later operation until a human clears it, so
+    ///     a wrong rate here is not a rounding problem — it wedges the session.
+    ///   - smpteStartSeconds: the SMPTE time, in seconds, that the project maps
+    ///     to `bar 1`. Logic's factory default is `01:00:00:00` = 3600, NOT
+    ///     zero. This parameter exists because assuming zero was measured wrong
+    ///     live: a locate computed without it landed the playhead at a negative
+    ///     bar, roughly an hour before the project start. Defaults to 0 to
+    ///     preserve the original pure-offset semantics for existing callers.
     /// - Returns: SMPTE components, or `nil` if the inputs are invalid or the
     ///   resulting time exceeds the 24-hour MMC wall-clock limit.
     static func barBeatToSMPTE(
@@ -191,31 +215,49 @@ enum MMCCommands {
         beat: Double,
         tempo: Double,
         beatsPerBar: Int,
-        frameRate: FrameRate = .fps30
+        frameRate: FrameRate = .fps30,
+        smpteStartSeconds: Double = 0
     ) -> (hours: UInt8, minutes: UInt8, seconds: UInt8, frames: UInt8, subframes: UInt8)? {
         guard bar >= 1, beat >= 1.0, tempo > 0, beatsPerBar > 0 else { return nil }
+        guard smpteStartSeconds >= 0, smpteStartSeconds.isFinite else { return nil }
         let totalBeats = Double(bar - 1) * Double(beatsPerBar) + (beat - 1.0)
-        let totalSeconds = totalBeats * 60.0 / tempo
+        let totalSeconds = smpteStartSeconds + totalBeats * 60.0 / tempo
         guard totalSeconds.isFinite, totalSeconds >= 0, totalSeconds < 86_400 else { return nil }
 
-        let wholeSeconds = Int(totalSeconds.rounded(.down))
+        // Round to the NEAREST whole frame, and report zero subframes.
+        //
+        // The original implementation floored the frame and pushed the
+        // remainder into the subframe byte. That is only correct for a
+        // receiver that honours subframes, and Logic does not: measured live
+        // 2026-09-05, a locate to bar 12 carrying frame 15 + subframe 63 (of
+        // 15.625 frames) landed the playhead at bar 11 beat 4 — 25 ms short,
+        // on the wrong side of the bar line, because the subframe was
+        // discarded. Rounding up to frame 16 lands inside bar 12.
+        //
+        // Truncating toward zero is the worse error of the two: it always
+        // lands EARLY, and landing early crosses back into the previous bar,
+        // which is exactly the failure that makes a trim-to-playhead cut in
+        // the wrong place.
+        let totalFramesExact = totalSeconds * frameRate.fps
+        guard totalFramesExact.isFinite else { return nil }
+        let totalFrames = Int(totalFramesExact.rounded())
+        let framesPerSecond = Int(frameRate.fps.rounded())
+        guard framesPerSecond > 0 else { return nil }
+
+        let wholeSeconds = totalFrames / framesPerSecond
+        let frames = totalFrames % framesPerSecond
+        guard wholeSeconds < 86_400 else { return nil }
+
         let hours = wholeSeconds / 3600
         let minutes = (wholeSeconds / 60) % 60
         let seconds = wholeSeconds % 60
-
-        let fractionalSecond = totalSeconds - Double(wholeSeconds)
-        let framesDouble = fractionalSecond * frameRate.fps
-        let wholeFrames = Int(framesDouble.rounded(.down))
-        let cappedFrames = min(wholeFrames, Int(frameRate.maxFrame))
-        let subframesDouble = (framesDouble - Double(wholeFrames)) * 100
-        let subframes = min(max(Int(subframesDouble.rounded()), 0), 99)
 
         return (
             hours: UInt8(hours),
             minutes: UInt8(minutes),
             seconds: UInt8(seconds),
-            frames: UInt8(cappedFrames),
-            subframes: UInt8(subframes)
+            frames: UInt8(min(frames, Int(frameRate.maxFrame))),
+            subframes: 0
         )
     }
 

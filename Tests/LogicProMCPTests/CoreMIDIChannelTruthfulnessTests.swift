@@ -282,15 +282,21 @@ private func expectCoreMIDIStateB(
     #expect(sent[0] == MMCCommands.locate(hours: 1, minutes: 2, seconds: 3, frames: 4))
 }
 
+/// CoreMIDI *can* position the playhead now — an MMC LOCATE, verified by an
+/// Accessibility read of the bar slider (see `CoreMIDIGotoPositionTests`). What
+/// it must never do is claim a bare send worked. With no project frame rate
+/// configured it declines outright, and the decline has to stay fallback-
+/// eligible so the Accessibility path still gets its turn.
 @Test func testCoreMIDIChannelGotoPositionReturnsExplicitError() async {
-    let channel = CoreMIDIChannel(engine: MockCoreMIDIEngine())
+    let channel = CoreMIDIChannel(engine: MockCoreMIDIEngine(), projectSync: nil)
     let result = await channel.execute(
         operation: "transport.goto_position",
         params: ["position": "12.1.1.1"]
     )
 
     #expect(!result.isSuccess)
-    #expect(result.message.contains("cannot position the playhead directly"))
+    #expect(!HonestContract.isTerminalStateC(result.message))
+    #expect(result.message.contains(ProjectSyncSettings.frameRateKey))
 }
 
 @Test func testCoreMIDIChannelCreateVirtualPortUsesPortManager() async {

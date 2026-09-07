@@ -13,9 +13,36 @@ actor CoreMIDIChannel: Channel {
         let message: String
     }
 
-    init(engine: any CoreMIDIEngineProtocol, portManager: (any VirtualPortManaging)? = nil) {
+    /// Project constants a LOCATE needs and AX cannot read. `nil` disables MMC
+    /// playhead positioning entirely — see `ProjectSyncSettings`.
+    private let projectSync: ProjectSyncSettings?
+    /// Transport read used to VERIFY a LOCATE. `nil` (the production case)
+    /// means "go through the AX helper"; tests inject a stub instead.
+    ///
+    /// This is NOT a direct AX call, and must never become one: this process is
+    /// sandboxed and not Accessibility-trusted, so direct AX here returns
+    /// nothing silently and the verification would never succeed. See
+    /// `TransportObserver`.
+    private let observeTransport: (@Sendable () async -> TransportObserver.Reading?)?
+    /// Created on first use rather than at init so constructing a channel never
+    /// touches the helper's LaunchAgent.
+    private var helperProxy: (any Channel)?
+    private let sleepNanos: @Sendable (UInt64) async -> Void
+
+    init(
+        engine: any CoreMIDIEngineProtocol,
+        portManager: (any VirtualPortManaging)? = nil,
+        projectSync: ProjectSyncSettings? = ProjectSyncSettings.fromEnvironment(),
+        observeTransport: (@Sendable () async -> TransportObserver.Reading?)? = nil,
+        sleepNanos: @escaping @Sendable (UInt64) async -> Void = {
+            try? await Task.sleep(nanoseconds: $0)
+        }
+    ) {
         self.engine = engine
         self.portManager = portManager
+        self.projectSync = projectSync
+        self.observeTransport = observeTransport
+        self.sleepNanos = sleepNanos
     }
 
     func start() async throws {
@@ -638,7 +665,7 @@ actor CoreMIDIChannel: Channel {
             )
 
         case "transport.goto_position":
-            return .error("CoreMIDI cannot position the playhead directly; use MCU or CGEvent fallback")
+            return await gotoPositionViaMMCLocate(params: params)
 
         case "mmc.play":
             let bytes = MMCCommands.play()
@@ -854,5 +881,186 @@ actor CoreMIDIChannel: Channel {
             return name
         }
         return "Unnamed MIDI Endpoint"
+    }
+}
+
+// MARK: - Playhead positioning that does not steal focus (task #28)
+
+extension CoreMIDIChannel {
+
+    /// Move the playhead with an MMC LOCATE, then verify it landed by reading
+    /// Logic's own bar slider over Accessibility.
+    ///
+    /// This is the only playhead move in the project that does not pull Logic
+    /// to the front, which matters for more than comfort: when Logic steals
+    /// focus mid-session the user's next keystrokes land in Logic and silently
+    /// mutate their project.
+    ///
+    /// MMC is send-only, but that does not condemn this to State B — the
+    /// verification comes from a *different* channel. AX reads reach Logic in
+    /// the background (issue #440 is about synthetic keystrokes, not reads), so
+    /// actuating over MIDI and reading back over AX is focus-free end to end.
+    ///
+    /// Every path that cannot prove the landing bar returns a NON-terminal
+    /// `.error`, so `ChannelRouter` falls through to the Accessibility path —
+    /// exact, but focus-taking. That keeps today's behaviour as the floor and
+    /// adds the focus-free path strictly on top: an unconfigured or unverifiable
+    /// run is no worse than before, and never reports a send as a success.
+    func gotoPositionViaMMCLocate(params: [String: String]) async -> ChannelResult {
+        guard let bar = Self.parseTargetBar(params) else {
+            return .error("MMC locate needs 'bar' (1...9999) or a bar-relative 'position'")
+        }
+        guard let sync = projectSync else {
+            return .error(
+                "MMC playhead positioning is unconfigured: set \(ProjectSyncSettings.frameRateKey) "
+                + "to the project's SMPTE frame rate. A LOCATE sent at a guessed rate raises Logic's "
+                + "frame-rate modal, which then blocks every later operation until a human clears it."
+            )
+        }
+        // ONE helper round trip, before anything is actuated. It supplies both
+        // the tempo the conversion needs and the "before" bar the receipt needs,
+        // and it fails closed: if the helper cannot be reached, nothing is sent.
+        guard let before = await readTransport() else {
+            return .error(
+                "Transport state unreadable through the AX helper, so bar \(bar) can be neither "
+                + "converted to SMPTE nor verified; nothing was sent."
+            )
+        }
+        let tempo = before.tempo
+        guard let smpte = MMCCommands.barBeatToSMPTE(
+            bar: bar,
+            beat: 1.0,
+            tempo: tempo,
+            beatsPerBar: sync.beatsPerBar,
+            frameRate: sync.frameRate,
+            smpteStartSeconds: sync.smpteStartSeconds
+        ) else {
+            return .error("Bar \(bar) at \(tempo) BPM falls outside the 24-hour SMPTE range")
+        }
+
+        let timecode = String(
+            format: "%02d:%02d:%02d:%02d",
+            smpte.hours, smpte.minutes, smpte.seconds, smpte.frames
+        )
+
+        let bytes: [UInt8]
+        do {
+            bytes = try MMCCommands.locateStrict(
+                hours: smpte.hours,
+                minutes: smpte.minutes,
+                seconds: smpte.seconds,
+                frames: smpte.frames,
+                subframes: smpte.subframes,
+                frameRate: sync.frameRate
+            )
+        } catch {
+            return .error("MMC locate rejected \(timecode): \(error)")
+        }
+
+        do {
+            try await engine.sendSysEx(bytes)
+        } catch {
+            return .error("Failed to send MMC locate for bar \(bar): \(error)")
+        }
+
+        let observed = await waitForPlayhead(bar: bar)
+
+        var extras: [String: Any] = [
+            "operation": "transport.goto_position",
+            "method": "mmc_locate",
+            "requested": "\(bar).1.1.1",
+            "timecode": timecode,
+            "frame_rate": sync.frameRate.configKey,
+            "tempo": tempo,
+            "beats_per_bar": sync.beatsPerBar,
+            "smpte_start_seconds": sync.smpteStartSeconds,
+            "stole_focus": false,
+        ]
+        extras["observed"] = observed.map { "\($0).1.1.1" } ?? NSNull()
+
+        guard let observed else {
+            return .error(
+                "MMC locate to bar \(bar) (\(timecode)) was sent, but the bar slider could not be "
+                + "read, so the landing is unverified."
+            )
+        }
+        guard observed == bar else {
+            return .error(
+                "MMC locate aimed at bar \(bar) (\(timecode)) but the playhead reads bar \(observed). "
+                + "Check that \(ProjectSyncSettings.beatsPerBarKey) and "
+                + "\(ProjectSyncSettings.smpteStartKey) match the project, and that Project Settings → "
+                + "Synchronization → MIDI → 'Listen to MMC input' is enabled."
+            )
+        }
+
+        // Honest about causation: matching a bar the playhead already sat on
+        // proves the position, not that the LOCATE was what put it there.
+        // Reading the bar BEFORE actuating is what makes this honest: a locate to
+        // the bar the playhead already occupied is indistinguishable from a
+        // locate that never arrived — both read back as a match.
+        extras["already_at_target"] = (before.bar == bar)
+        return .success(HonestContract.encodeStateA(extras: extras))
+    }
+
+    /// Poll for the playhead to reach `bar`, bounded by WALL-CLOCK time.
+    ///
+    /// The budget must count the reads, not just the sleeps between them. Each
+    /// read is a FIFO round trip to the AX helper — measured live 2026-09-06 at
+    /// roughly 2.5 s, not the microseconds an in-process AX read would cost. The
+    /// first version budgeted 800 ms of *sleep* across up to eleven reads and so
+    /// actually ran for ~30 s, blowing the server's 25 s deadline before the
+    /// Accessibility fallback ever got its turn: the operation timed out even
+    /// though the fallback would have succeeded in four more seconds.
+    ///
+    /// `maxWaitSeconds` is therefore deliberately small. Overshooting does not
+    /// buy a better answer — it just spends the deadline that the fallback needs.
+    /// Bounded by BOTH a wall-clock budget and a read count, because each bound
+    /// covers a case the other cannot. In production the clock stops the loop:
+    /// reads are slow and the deadline is what matters. Under test the sleep is
+    /// a no-op and reads are instant, so the clock would never advance and the
+    /// loop would spin — there the read cap stops it.
+    private func waitForPlayhead(
+        bar: Int,
+        maxWaitSeconds: Double = 6.0,
+        maxReads: Int = 6
+    ) async -> Int? {
+        let started = Date()
+        var latest: Int? = await readTransport()?.bar
+        var reads = 1
+
+        while latest != bar,
+              reads < maxReads,
+              Date().timeIntervalSince(started) < maxWaitSeconds {
+            await sleepNanos(200_000_000)   // 200 ms
+            latest = await readTransport()?.bar
+            reads += 1
+        }
+        return latest
+    }
+
+    /// Read the transport, through the injected stub when tests supply one and
+    /// through the AX helper otherwise.
+    private func readTransport() async -> TransportObserver.Reading? {
+        if let observeTransport { return await observeTransport() }
+        if helperProxy == nil { helperProxy = AXHelperProxyChannel() }
+        guard let helperProxy else { return nil }
+        return await TransportObserver.read(via: helperProxy)
+    }
+
+    /// Accept the same position spellings the Accessibility path accepts, so
+    /// swapping channels never changes what a caller may write.
+    static func parseTargetBar(_ params: [String: String]) -> Int? {
+        var candidate: Int?
+        if let barStr = params["bar"], let b = Int(barStr) {
+            candidate = b
+        } else if let pos = params["position"] {
+            // Timecode is the MCU/`mmc.locate` path's input, not this one.
+            guard !pos.contains(":") else { return nil }
+            if let first = pos.split(separator: ".").first, let b = Int(first) {
+                candidate = b
+            }
+        }
+        guard let bar = candidate, (1...9999).contains(bar) else { return nil }
+        return bar
     }
 }

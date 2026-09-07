@@ -270,7 +270,11 @@ struct HCGlobalInvariantTests {
                 command: "mmc_locate",
                 params: ["bar": .int(1)],
                 operation: "transport.goto_position",
-                destinations: [.accessibility, .mcu, .coreMIDI, .cgEvent],
+                // CoreMIDI leads since the MMC LOCATE path landed: it moves the
+                // playhead without taking focus, and declines (non-terminally)
+                // whenever it cannot prove the landing bar, so Accessibility
+                // still gets its turn. See `CoreMIDIGotoPositionTests`.
+                destinations: [.coreMIDI, .accessibility, .mcu, .cgEvent],
                 invariant: .minimumV1
             ),
 

@@ -484,14 +484,24 @@ private let toolText = sharedToolText
     #expect(result.message.contains("Pitch bend 8192"))
 }
 
+/// Unconfigured, CoreMIDI still declines to position the playhead — and must
+/// decline in a way the router can fall back from. Asserting the *message*
+/// would only pin today's wording; what the contract owes callers is that the
+/// refusal is not a terminal State C, because a terminal one would suppress the
+/// Accessibility fallback and leave the operation dead.
 @Test func testCoreMIDIChannelGotoPositionRequiresFallback() async {
-    let channel = CoreMIDIChannel(engine: MockCoreMIDIEngine(active: true))
+    let channel = CoreMIDIChannel(
+        engine: MockCoreMIDIEngine(active: true),
+        projectSync: nil
+    )
     let result = await channel.execute(
         operation: "transport.goto_position",
         params: ["position": "12.1.1.1"]
     )
     #expect(!result.isSuccess)
-    #expect(result.message.contains("use MCU or CGEvent fallback"))
+    #expect(!HonestContract.isTerminalStateC(result.message))
+    #expect(!HonestContract.isFallbackUnsafeStateC(result.message))
+    #expect(result.message.contains(ProjectSyncSettings.frameRateKey))
 }
 
 @Test func testCoreMIDIChannelHealthCheckInactive() async {

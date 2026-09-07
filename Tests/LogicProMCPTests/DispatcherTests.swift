@@ -3077,11 +3077,17 @@ private actor SelectiveFailChannel: Channel {
         ("mmc.play", [:]),
         ("mmc.stop", [:]),
         ("mmc.record_strobe", [:]),
+        // `mmc_locate` by BAR routes through `transport.goto_position`, whose
+        // chain now leads with CoreMIDI (MMC LOCATE moves the playhead without
+        // taking focus). Accessibility is not registered in this test, so before
+        // that change the operation fell through to MCU; it lands on CoreMIDI
+        // now, in call order between the record strobe and the timecode locate.
+        ("transport.goto_position", ["position": "17.1.1.1"]),
         ("mmc.locate", ["time": "01:02:03:04"]),
     ])
-    expectExecutedOps(mcuOps, equals: [
-        ("transport.goto_position", ["position": "17.1.1.1"]),
-    ])
+    // Nothing reaches MCU any more: CoreMIDI is ahead of it in every chain this
+    // test exercises.
+    expectExecutedOps(mcuOps, equals: [])
 }
 
 @Test func testMIDIDispatcherAcceptsSysexDataStringBranch() async {

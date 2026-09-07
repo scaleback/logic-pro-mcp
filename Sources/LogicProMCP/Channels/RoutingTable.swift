@@ -59,7 +59,13 @@ extension ChannelRouter {
         // Router fallback just obscures the real AX error message.
         "transport.set_tempo":        [.accessibility],
         "transport.get_state":        [.accessibility],
-        "transport.goto_position":    [.accessibility, .mcu, .coreMIDI, .cgEvent],
+        // CoreMIDI leads: an MMC LOCATE moves the playhead without pulling Logic
+        // in front of whatever the user is typing into (task #28). It returns a
+        // non-terminal error whenever it cannot PROVE the landing bar — and
+        // when `LOGIC_MCP_PROJECT_FPS` is unset it declines immediately — so an
+        // unconfigured install falls straight through to Accessibility and
+        // behaves exactly as it did before. AX stays the floor, never the loss.
+        "transport.goto_position":    [.coreMIDI, .accessibility, .mcu, .cgEvent],
         "transport.set_cycle_range":  [.accessibility],
         "transport.toggle_count_in":  [.accessibility, .midiKeyCommands, .cgEvent],
         "transport.toggle_autopunch": [.accessibility],

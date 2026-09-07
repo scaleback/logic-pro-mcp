@@ -172,3 +172,75 @@ struct MMCCommandsTests {
         #expect(bytes == [0xF0, 0x7F, ServerConfig.mmcDeviceID, 0x06, 0x44, 0x06, 0x01, 1, 2, 3, 4, 5, 0xF7])
     }
 }
+
+// MARK: - Live-measured corrections (2026-09-05, Edgar's project)
+//
+// Both cases below are transcriptions of a real failed locate, not invented
+// arithmetic. The project: 128 bpm, 4/4, 25 fps, bar 1 mapped to SMPTE
+// 01:00:00:00 (Logic's factory default, visible in Project Settings →
+// Synchronization → General as "Bar Position 1 1 1 1 plays at SMPTE
+// 01:00:00:00").
+
+/// Bar 1 is not necessarily SMPTE zero. Assuming it was put the playhead a
+/// negative bar away — roughly an hour before the project start — which is
+/// what a locate computed without the offset actually did.
+@Test("barBeatToSMPTE: honours the project's SMPTE start offset")
+func barBeatToSMPTEHonoursStartOffset() throws {
+    let withOffset = try #require(MMCCommands.barBeatToSMPTE(
+        bar: 12, beat: 1.0, tempo: 128, beatsPerBar: 4,
+        frameRate: .fps25, smpteStartSeconds: 3600
+    ))
+    #expect(withOffset.hours == 1)
+    #expect(withOffset.minutes == 0)
+    #expect(withOffset.seconds == 20)
+
+    // Same musical position, no offset: one hour earlier on the wire.
+    let withoutOffset = try #require(MMCCommands.barBeatToSMPTE(
+        bar: 12, beat: 1.0, tempo: 128, beatsPerBar: 4, frameRate: .fps25
+    ))
+    #expect(withoutOffset.hours == 0)
+    #expect(withoutOffset.seconds == 20)
+}
+
+/// The 25 ms that landed a trim in the wrong bar.
+///
+/// Bar 12 at 128 bpm is 20.625 s = 515.625 frames at 25 fps. Flooring gives
+/// frame 15 and pushes .625 into the subframe byte — which Logic discards, so
+/// the playhead landed at 20.600 s: bar 11 beat 4, one beat short of the
+/// target, and a trim there cuts in the wrong place. Rounding to the nearest
+/// frame (16) lands inside bar 12.
+@Test("barBeatToSMPTE: rounds to the nearest frame instead of truncating")
+func barBeatToSMPTERoundsToNearestFrame() throws {
+    let smpte = try #require(MMCCommands.barBeatToSMPTE(
+        bar: 12, beat: 1.0, tempo: 128, beatsPerBar: 4, frameRate: .fps25
+    ))
+    #expect(smpte.seconds == 20)
+    #expect(smpte.frames == 16, "15 + discarded subframes lands in the previous bar")
+    // Subframes are reported as zero: the rounding already carries that
+    // precision, and a receiver that ignores them (Logic) must still land right.
+    #expect(smpte.subframes == 0)
+}
+
+/// Rounding must carry into the next second rather than emitting an
+/// out-of-range frame number.
+@Test("barBeatToSMPTE: frame rounding carries into seconds")
+func barBeatToSMPTERoundingCarries() throws {
+    // 0.999 s at 25 fps = 24.975 frames → rounds to 25, which is not a legal
+    // frame number; it must become the next whole second, frame 0.
+    let tempo = 60.0 * 4.0 / 0.999   // one bar of 4/4 == 0.999 s
+    let smpte = try #require(MMCCommands.barBeatToSMPTE(
+        bar: 2, beat: 1.0, tempo: tempo, beatsPerBar: 4, frameRate: .fps25
+    ))
+    #expect(smpte.seconds == 1)
+    #expect(smpte.frames == 0)
+}
+
+@Test("barBeatToSMPTE: rejects a negative or non-finite start offset")
+func barBeatToSMPTERejectsBadOffset() {
+    #expect(MMCCommands.barBeatToSMPTE(
+        bar: 1, beat: 1.0, tempo: 120, beatsPerBar: 4, smpteStartSeconds: -1
+    ) == nil)
+    #expect(MMCCommands.barBeatToSMPTE(
+        bar: 1, beat: 1.0, tempo: 120, beatsPerBar: 4, smpteStartSeconds: .infinity
+    ) == nil)
+}
