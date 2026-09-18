@@ -1,0 +1,25 @@
+{
+ "plugin": "ChromaVerb",
+ "plugin_id": 287,
+ "param_count": 81,
+ "censo": "2026-09-18 con Edgar: CensoChromaVerb-base (Recall Default) → CensoChromaVerb-valores",
+ "params": {
+  "dry":        {"index": 1,  "unit": "%",   "evidence": "censo", "nota": "100 → 87"},
+  "wet":        {"index": 2,  "unit": "%",   "evidence": "censo", "nota": "50 → 29"},
+  "sala":       {"index": 3,  "unit": "enum", "evidence": "censo", "nota": "Room 0 → Concert Hall 2",
+                 "values": {"Room": [0, "censo"], "Concert Hall": [2, "censo"]}},
+  "predelay":   {"index": 4,  "unit": "ms",  "evidence": "censo", "nota": "8 → 17 (8 era además default único)"},
+  "decay":      {"index": 6,  "unit": "s",   "evidence": "censo", "nota": "1.1 → 2.3 (Logic ajustó 2.35 a 2.3)"},
+  "attack":     {"index": 8,  "unit": "%",   "evidence": "censo", "nota": "0 → 13"},
+  "size":       {"index": 9,  "unit": "%",   "evidence": "censo", "nota": "60 → 47"},
+  "density":    {"index": 10, "unit": "%",   "evidence": "censo", "nota": "60 → 71"},
+  "distance":   {"index": 11, "unit": "%",   "evidence": "censo", "nota": "50 → 38"},
+  "early_late": {"index": 12, "unit": "%",   "evidence": "censo", "nota": "50 → 36 al poner 64|36: guarda el SEGUNDO número"},
+  "mod_depth":  {"index": 19, "unit": "%",   "evidence": "censo", "nota": "25 → 42"},
+  "mod_speed":  {"index": 20, "unit": "Hz",  "evidence": "censo", "nota": "0.5 → 0.82 (Logic ajustó 0.83 a 0.82)"},
+  "smoothing":  {"index": 22, "unit": "%",   "evidence": "censo", "nota": "12 → 23"}
+ },
+ "sin_identificar": {"65": "0 → 1 en el censo sin haberse pedido; sospecha: pestaña MAIN/DETAILS al guardar"},
+ "pendiente": ["resto de tipos de sala (solo Room=0 y Concert Hall=2 vistos)",
+               "EQ de salida y de amortiguación (gráficas)", "Quality, Mod Source, Freeze, Mono Maker/Width"]
+}
