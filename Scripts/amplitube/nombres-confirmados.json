@@ -2,6 +2,14 @@
  "c81fb9d5-defb-4c65-ba59-205b9b9ea21e": {
   "display_name": "MiniPlex 20",
   "internal_name": "AmpFriedman",
-  "fuente": "Captura de Edgar 2026-09-18: con el preset de fábrica \"80's\" cargado, AmpliTube muestra este ampli como MiniPlex 20; los tres amplis del preset usan este GUID."
+  "fuente": "Captura de Edgar 2026-09-18: con el preset de fábrica \"80's\" cargado, AmpliTube muestra este ampli como MiniPlex 20; los tres amplis del preset usan este GUID.",
+  "tiene_edgar": false,
+  "fuente_licencia": "Captura de Edgar 2026-09-18: MiniPlex 20 con candado en el navegador de equipo."
+ },
+ "4468f4f7-0068-4b8b-ac2b-99e13113fe2d": {
+  "display_name": "DDelay",
+  "tiene_edgar": false,
+  "fuente": "Edgar 2026-09-18: cargó el preset Claude/«Prueba 80s con delay» (este GUID en StompA1.1) y AmpliTube lo muestra como DDelay.",
+  "fuente_licencia": "Captura de Edgar 2026-09-18: DDelay con candado en el navegador de equipo."
  }
 }

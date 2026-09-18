@@ -122,6 +122,15 @@ class VocabTests(unittest.TestCase):
         self.assertEqual(vocab["models"][AMP_ONE]["display_name"], "Plexi Mini")
         self.assertEqual(vocab["models"][AMP_ONE]["display_source"], "prueba")
 
+    def test_license_status_is_only_what_edgar_confirmed(self):
+        names = self.f.dir / "confirmados.json"
+        names.write_text(json.dumps({DELAY: {"display_name": "Eco", "fuente": "x", "tiene_edgar": False}}))
+        vocab = at.build_vocab(self.f.root, confirmed_file=names)
+        self.assertIs(vocab["models"][DELAY]["owned"], False)
+        self.assertIsNone(vocab["models"][COMP]["owned"])          # unknown stays unknown
+        self.assertEqual(at.lock(vocab["models"][DELAY]), " [candado]")
+        self.assertEqual(at.lock(vocab["models"][COMP]), "")
+
     def test_bypass_is_an_enum_not_a_range(self):
         bypass = self.f.vocab["models"][COMP]["params"]["Bypass"]
         self.assertEqual(bypass, {"type": "enum", "values": ["0", "1"], "seen": 1})

@@ -114,6 +114,11 @@ def classify(name: str, values: list[str]) -> dict:
     return {"type": "num", "min": min(numbers), "max": max(numbers), "seen": len(values)}
 
 
+def lock(model: dict) -> str:
+    """How Edgar's license status reads next to a gear name."""
+    return {False: " [candado]", True: " [lo tiene]"}.get(model.get("owned"), "")
+
+
 def label(model: dict, guid: str) -> str:
     if model.get("display_name"):
         return model["display_name"]
@@ -190,6 +195,9 @@ def build_vocab(root: Path, confirmed_file: Path | None = CONFIRMED_FILE) -> dic
             "internal_name": m["names"].most_common(1)[0][0] if m["names"] else None,
             "display_name": None,
             "display_source": None,
+            # True/False only when Edgar confirmed it: most factory presets use
+            # gear with a lock, and a tone built on locked gear is a demo.
+            "owned": None,
             "categories": sorted({category(t) for t in m["tags"]}),
             "uses": m["uses"],
             "example": m["example"],
@@ -198,6 +206,7 @@ def build_vocab(root: Path, confirmed_file: Path | None = CONFIRMED_FILE) -> dic
         if guid in confirmed:
             entry["display_name"] = confirmed[guid]["display_name"]
             entry["display_source"] = confirmed[guid]["fuente"]
+            entry["owned"] = confirmed[guid].get("tiene_edgar")
         elif guid in midi_names:
             entry["display_name"] = midi_names[guid].most_common(1)[0][0]
             entry["display_source"] = "MidiAssignments de presets de fábrica (escrito por IK)"
@@ -236,6 +245,7 @@ def build_index(root: Path, vocab: dict) -> list[dict]:
             knobs = {k.split("_", 1)[0].lower(): v for k, v in amp.attrib.items() if "_" in k}
             amps.append({
                 "container": tag, "guid": node.get("Model"), "label": name_of(node.get("Model")),
+                "owned": models.get(node.get("Model"), {}).get("owned"),
                 "gain": knobs.get("gain"), "bass": knobs.get("bass"), "mid": knobs.get("mid"),
                 "treble": knobs.get("treble"), "master": knobs.get("master"),
             })
@@ -251,6 +261,7 @@ def build_index(root: Path, vocab: dict) -> list[dict]:
                 slot = node.find(f"Slot{i}")
                 effects.append({
                     "slot": f"{tag}.{i}", "guid": guid, "label": name_of(guid),
+                    "owned": models.get(guid, {}).get("owned"),
                     "bypass": slot is not None and slot.get("Bypass") == "1",
                 })
         cab = preset.find("CabA")
@@ -545,9 +556,10 @@ def cmd_search(args):
             continue
         hits.append(p)
     for p in hits[: args.limit]:
-        amp = p["amp"]["label"] if p["amp"] else "—"
+        amp = (p["amp"]["label"] + lock(p["amp"])) if p["amp"] else "—"
         gain = p["amp"]["gain"] if p["amp"] else None
-        fx = ", ".join(e["label"] + (" (bypass)" if e["bypass"] else "") for e in p["effects"]) or "sin efectos"
+        fx = ", ".join(e["label"] + lock(e) + (" (bypass)" if e["bypass"] else "")
+                       for e in p["effects"]) or "sin efectos"
         print(f"{p['file']}\n    {p['character']} · {p['style']} · {amp} gain={gain} · {fx}")
     print(f"\n{len(hits)} coincidencias{' (mostrando ' + str(args.limit) + ')' if len(hits) > args.limit else ''}.")
 
@@ -561,7 +573,7 @@ def cmd_models(args):
         if args.buscar and args.buscar.lower() not in (name + " " + " ".join(keys)).lower():
             continue
         source = f"  [nombre: {m['display_source']}]" if m["display_name"] else ""
-        print(f"{name}  ({m['kind']}, {'/'.join(m['categories'])}, en {m['uses']} presets){source}")
+        print(f"{name}{lock(m)}  ({m['kind']}, {'/'.join(m['categories'])}, en {m['uses']} presets){source}")
         print(f"    {guid}  params: {', '.join(keys[:12])}{' …' if len(keys) > 12 else ''}")
 
 
@@ -575,13 +587,16 @@ def cmd_show(args):
             continue
         if node.tag in AMP_CONTAINERS:
             guid = node.get("Model")
-            print(f"[{node.tag}] ampli: {label(vocab['models'][guid], guid) if guid in vocab['models'] else guid}")
+            known = vocab["models"].get(guid)
+            print(f"[{node.tag}] ampli: {label(known, guid) + lock(known) if known else guid}")
         elif node.tag in SLOT_CONTAINERS:
             filled = [(i, node.get(f"Stomp{i}")) for i in range(SLOTS_PER_CONTAINER)
                       if node.get(f"Stomp{i}") not in (None, EMPTY_SLOT)]
             if not filled and not args.todo:
                 continue
-            names = ", ".join(f"{i}={label(vocab['models'][g], g) if g in vocab['models'] else g}" for i, g in filled)
+            names = ", ".join(
+                f"{i}={label(vocab['models'][g], g) + lock(vocab['models'][g]) if g in vocab['models'] else g}"
+                for i, g in filled)
             print(f"[{node.tag}] {names or 'vacío'}")
         else:
             print(f"[{node.tag}]")
