@@ -1,0 +1,39 @@
+{
+ "fuente": "Extraída de un .aupreset que Logic guardó desde el menú Setting de AmpliTube 5. Sin tono ni PresetPath.",
+ "plist": {
+  "data_b64": "AAAAAAAAAAAAAAAQAAAAMAAAAAAAAAAxAAAAAAAAADIAAAAAAAAAMwAAAAAAAAA0AAAAAAAAADUAAAAAAAAANgAAAAAAAAA3AAAAAAAAADgAAAAAAAAAOQAAAAAAAAYfAAAAAAAABiAAAAAAAAAGIQAAAAAAAAYiAAAAAAAABiMAAAAAAAAGJAAAAAA=",
+  "element-name": {
+   "1": {
+    "0": "Input 1"
+   },
+   "2": {
+    "0": "Output 1"
+   }
+  },
+  "manufacturer": 1231777133,
+  "subtype": 1098146357,
+  "type": 1635085670,
+  "version": 0
+ },
+ "valuetree_type": "State",
+ "props": [
+  {
+   "name": "PresetData",
+   "marker": 8
+  },
+  {
+   "name": "Panels",
+   "marker": 8,
+   "payload_b64": "VkMyIUcAAAA8P3htbCB2ZXJzaW9uPSIxLjAiIGVuY29kaW5nPSJVVEYtOCI/PiA8UGFuZWxzIEdlYXJWaXNpYmlsaXR5TW9kZT0iMCIvPgA="
+  },
+  {
+   "name": "GuiScale",
+   "marker": 8,
+   "payload_b64": "VkMyIV8AAAA8P3htbCB2ZXJzaW9uPSIxLjAiIGVuY29kaW5nPSJVVEYtOCI/PiA8R3VpU2NhbGUgU2NhbGVSYXRpb1dpZHRoPSIxLjAiIFNjYWxlUmF0aW9IZWlnaHQ9IjEuMCIvPgA="
+  }
+ ],
+ "program_trailer_xml": [
+  "<Preferences Quality=\"High\" StompsOversampling=\"1\" PreOversampling=\"1\" AmpOversampling=\"1\" HighResolution=\"1\" AmpReverbQuality=\"Real\" RoomQuality=\"Real\" CabResolution=\"High\" CabinetGlobalBypass=\"0\" BPMSource=\"Global\" />",
+  "<Automation Slots=\"16\" />"
+ ]
+}

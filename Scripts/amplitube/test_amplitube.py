@@ -367,3 +367,90 @@ class IndexTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LogicExportTests(unittest.TestCase):
+    """FASE D: a .at5p published as an AU preset in Logic's Setting menu."""
+
+    PANELS = b'VC2!G\x00\x00\x00<?xml version="1.0" encoding="UTF-8"?> <Panels GearVisibilityMode="0"/>\x00'
+    GUISCALE = b'VC2!\x0f\x00\x00\x00<GuiScale/>\x00'
+
+    def setUp(self):
+        self.f = Fixture()
+        program = ('<?xml version="1.0" encoding="UTF-8" ?><Program Version="2" Format="at5p" GUID="x" '
+                   'PresetBPM="120" ProgramChange="-1" PresetName="Viejo" PresetPath="/Users/alguien/secreto.at5p">'
+                   '<Chain Preset="Chain11" /><Preferences Quality="High" /><Automation Slots="16" /></Program>')
+        self.state = at.valuetree_encode(("State", [
+            ("PresetData", 8, program.encode() + b"\0"),
+            ("Panels", 8, self.PANELS),
+            ("GuiScale", 8, self.GUISCALE),
+        ], []))
+        self.logic_saved = self.f.dir / "guardado-por-logic.aupreset"
+        with open(self.logic_saved, "wb") as fh:
+            plistlib.dump({"data": b"\x00\x01", "element-name": {"1": {"0": "Input 1"}},
+                           "jucePluginState": self.state, "manufacturer": 1, "name": "Viejo",
+                           "subtype": 2, "type": 3, "version": 0}, fh, fmt=plistlib.FMT_XML)
+        self.template = at.make_au_template(self.logic_saved)
+        self.out_root = self.f.dir / "AU"
+
+    def tearDown(self):
+        self.f.cleanup()
+
+    def export(self, name="Tono"):
+        return at.export_logic(self.f.root, self.template, "Fabrica/Base.at5p", name, out_root=self.out_root)
+
+    def read_state(self, path):
+        with open(path, "rb") as fh:
+            plist = plistlib.load(fh)
+        tree, end = at.valuetree_decode(plist["jucePluginState"])
+        self.assertEqual(end, len(plist["jucePluginState"]))
+        return plist, dict((n, p) for n, _, p in tree[1]), [n for n, _, _ in tree[1]]
+
+    def test_valuetree_round_trip_is_byte_exact(self):
+        tree, end = at.valuetree_decode(self.state)
+        self.assertEqual(end, len(self.state))
+        self.assertEqual(at.valuetree_encode(tree), self.state)
+
+    def test_template_drops_the_personal_path_and_the_tone(self):
+        dumped = json.dumps(self.template)
+        self.assertNotIn("/Users/alguien", dumped)
+        self.assertNotIn("Chain11", dumped)
+        self.assertEqual(len(self.template["program_trailer_xml"]), 2)
+
+    def test_template_refuses_a_state_that_does_not_re_encode(self):
+        broken = self.f.dir / "roto.aupreset"
+        with open(broken, "wb") as fh:
+            plistlib.dump({"data": b"", "jucePluginState": self.state + b"\x00basura",
+                           "manufacturer": 1, "subtype": 2, "type": 3}, fh)
+        with self.assertRaises(at.AmpliTubeError):
+            at.make_au_template(broken)
+
+    def test_export_lands_in_claude_and_keeps_logics_ui_blobs_byte_exact(self):
+        out = self.export()
+        self.assertEqual(out, self.out_root / at.CLAUDE_DIR / "Tono.aupreset")
+        plist, props, order = self.read_state(out)
+        self.assertEqual(order, ["PresetData", "Panels", "GuiScale"])
+        self.assertEqual(props["Panels"], self.PANELS)
+        self.assertEqual(props["GuiScale"], self.GUISCALE)
+        self.assertEqual(plist["name"], "Tono")
+        self.assertEqual(plist["data"], b"\x00\x01")
+
+    def test_program_carries_the_tone_as_version_2_without_metainfo(self):
+        _, props, _ = self.read_state(self.export())
+        raw = props["PresetData"]
+        self.assertTrue(raw.endswith(b"\0"))
+        self.assertNotIn(b"\n", raw)                          # one line, like AmpliTube writes it
+        program = ET.fromstring(raw.rstrip(b"\0").decode())
+        self.assertEqual((program.tag, program.get("Version")), ("Program", "2"))
+        self.assertEqual(program.get("PresetName"), "Tono")
+        self.assertIsNone(program.get("PresetPath"))
+        self.assertIsNone(program.find("MetaInfo"))
+        self.assertEqual(program.find("AmpA/Amp").get("Gain_AmpOne"), "6")   # the tone came from Base
+        self.assertEqual([c.tag for c in program][-2:], ["Preferences", "Automation"])
+
+    def test_export_never_overwrites(self):
+        out = self.export()
+        before = out.read_bytes()
+        with self.assertRaises(at.AmpliTubeError):
+            self.export()
+        self.assertEqual(out.read_bytes(), before)

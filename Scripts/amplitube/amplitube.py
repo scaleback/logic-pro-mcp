@@ -30,8 +30,10 @@ Mantenimiento:
 from __future__ import annotations
 
 import argparse
+import base64
 import copy
 import json
+import plistlib
 import re
 import sys
 import uuid
@@ -50,6 +52,11 @@ CONFIRMED_FILE = HERE / "nombres-confirmados.json"
 # not. The file ALSO holds SerialNumber, UserSerial and AuthCode: only
 # GUID-shaped keys are ever read, and no value is read at all.
 LICENSE_PLIST = Path.home() / "Library" / "Preferences" / "com.ikmultimedia.AmpliTube 5.plist"
+# Where Logic looks for AmpliTube's AU presets: they show up under
+# Setting → AU Presets, and a subfolder becomes a submenu (verified with Edgar
+# 2026-09-18 for Logic's own .pst settings; same menu).
+LOGIC_AU_ROOT = Path.home() / "Library" / "Audio" / "Presets" / "IK Multimedia" / "AmpliTube 5"
+AU_TEMPLATE_FILE = HERE / "plantilla-aupreset.json"
 GUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 
 CLAUDE_DIR = "Claude"
@@ -86,6 +93,157 @@ def licensed_guids(path: Path | None) -> set[str] | None:
     with open(path, "rb") as fh:
         keys = plistlib.load(fh).keys()
     return {k for k in keys if GUID_RE.fullmatch(k)}
+
+
+# --------------------------------------------------------------------------
+# JUCE ValueTree: the binary wrapper Logic stores AmpliTube's AU state in
+# --------------------------------------------------------------------------
+# Verified 2026-09-18 on a preset Logic saved from AmpliTube: decoding then
+# re-encoding reproduced all 10 328 bytes exactly. Layout per node:
+#   type\0  cint(nProps)  { name\0  cint(len+1)  marker  payload }*  cint(nChildren)
+# where cint is JUCE's compressed int: one length byte, then little-endian.
+
+def _read_cint(b: bytes, i: int) -> tuple[int, int]:
+    n = b[i] & 0x7F
+    v = int.from_bytes(b[i + 1:i + 1 + n], "little")
+    return (-v if b[i] & 0x80 else v), i + 1 + n
+
+
+def _write_cint(v: int) -> bytes:
+    u = abs(v)
+    body = u.to_bytes((u.bit_length() + 7) // 8, "little") if u else b""
+    return bytes([len(body) | (0x80 if v < 0 else 0)]) + body
+
+
+def valuetree_decode(blob: bytes, i: int = 0):
+    end = blob.index(b"\0", i)
+    node_type, i = blob[i:end].decode("utf-8"), end + 1
+    count, i = _read_cint(blob, i)
+    props = []
+    for _ in range(count):
+        end = blob.index(b"\0", i)
+        name, i = blob[i:end].decode("utf-8"), end + 1
+        size, i = _read_cint(blob, i)
+        props.append((name, blob[i], blob[i + 1:i + size]))
+        i += size
+    count, i = _read_cint(blob, i)
+    children = []
+    for _ in range(count):
+        child, i = valuetree_decode(blob, i)
+        children.append(child)
+    return (node_type, props, children), i
+
+
+def valuetree_encode(tree) -> bytes:
+    node_type, props, children = tree
+    out = node_type.encode("utf-8") + b"\0" + _write_cint(len(props))
+    for name, marker, payload in props:
+        out += name.encode("utf-8") + b"\0" + _write_cint(len(payload) + 1) + bytes([marker]) + payload
+    out += _write_cint(len(children))
+    for child in children:
+        out += valuetree_encode(child)
+    return out
+
+
+def make_au_template(aupreset: Path) -> dict:
+    """Strip a Logic-saved AmpliTube .aupreset down to what every export reuses.
+
+    Kept: the AU plist keys, the UI blobs (Panels, GuiScale) byte for byte, and
+    the two elements the embedded program carries beyond a .at5p (Preferences,
+    Automation). Dropped: the tone itself and PresetPath, which holds the home
+    folder of whoever saved it.
+    """
+    with open(aupreset, "rb") as fh:
+        plist = plistlib.load(fh)
+    tree, end = valuetree_decode(plist["jucePluginState"])
+    if end != len(plist["jucePluginState"]) or valuetree_encode(tree) != plist["jucePluginState"]:
+        raise AmpliTubeError("La plantilla no re-codifica idéntica; otra versión de AmpliTube, no se usa.")
+    props = {name: (marker, payload) for name, marker, payload in tree[1]}
+    if "PresetData" not in props:
+        raise AmpliTubeError("La plantilla no trae PresetData.")
+    program = ET.fromstring(props["PresetData"][1].rstrip(b"\0").decode("utf-8"))
+    trailer = [ET.tostring(program.find(tag), encoding="unicode", short_empty_elements=True)
+               for tag in ("Preferences", "Automation") if program.find(tag) is not None]
+    return {
+        "fuente": "Extraída de un .aupreset que Logic guardó desde el menú Setting de AmpliTube 5. "
+                  "Sin tono ni PresetPath.",
+        "plist": {
+            "data_b64": base64.b64encode(plist["data"]).decode("ascii"),
+            "element-name": plist.get("element-name"),
+            "manufacturer": plist["manufacturer"], "subtype": plist["subtype"],
+            "type": plist["type"], "version": plist.get("version", 0),
+        },
+        "valuetree_type": tree[0],
+        "props": [
+            {"name": name, "marker": marker}
+            | ({} if name == "PresetData" else {"payload_b64": base64.b64encode(payload).decode("ascii")})
+            for name, marker, payload in tree[1]
+        ],
+        "program_trailer_xml": trailer,
+    }
+
+
+def export_logic(root: Path, template: dict, preset_ref: str, name: str,
+                 out_root: Path = LOGIC_AU_ROOT) -> Path:
+    """Write a .at5p as an AU preset Logic lists under Setting → AU Presets → Claude.
+
+    Built on the template, never synthesised: the AU keys and UI blobs are the
+    bytes Logic itself wrote. Only the program changes — the .at5p's tone
+    blocks, re-rooted as <Program Version="2"> the way the AU state carries it.
+    """
+    if not name or "/" in name or name.startswith("."):
+        raise AmpliTubeError(f"Nombre «{name}» inválido.")
+    source_path = resolve_preset(root, preset_ref)
+    source = ET.parse(source_path).getroot()
+
+    program = ET.Element("Program")
+    program.set("Version", "2")
+    program.set("Format", source.get("Format", "at5p"))
+    program.set("GUID", str(uuid.uuid4()))
+    program.set("PresetBPM", source.get("PresetBPM", "120"))
+    program.set("ProgramChange", source.get("ProgramChange", "-1"))
+    program.set("PresetName", name)
+    for child in source:
+        if child.tag == "MetaInfo":                # a .at5p field the AU state does not carry
+            continue
+        program.append(copy.deepcopy(child))
+    for xml in template["program_trailer_xml"]:
+        program.append(ET.fromstring(xml))
+    for element in program.iter():                 # AmpliTube writes it on one line
+        if element.text is not None and not element.text.strip():
+            element.text = None
+        if element.tail is not None and not element.tail.strip():
+            element.tail = None
+    preset_data = ('<?xml version="1.0" encoding="UTF-8" ?>'
+                   + ET.tostring(program, encoding="unicode", short_empty_elements=True)).encode("utf-8") + b"\0"
+
+    props = []
+    for p in template["props"]:
+        payload = preset_data if p["name"] == "PresetData" else base64.b64decode(p["payload_b64"])
+        props.append((p["name"], p["marker"], payload))
+    keys = template["plist"]
+    plist = {
+        "data": base64.b64decode(keys["data_b64"]),
+        "jucePluginState": valuetree_encode((template["valuetree_type"], props, [])),
+        "manufacturer": keys["manufacturer"], "name": name,
+        "subtype": keys["subtype"], "type": keys["type"], "version": keys["version"],
+    }
+    if keys.get("element-name") is not None:
+        plist["element-name"] = keys["element-name"]
+
+    out = out_root / CLAUDE_DIR / f"{name}.aupreset"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with open(out, "xb") as fh:                # never overwrites
+            plistlib.dump(plist, fh, fmt=plistlib.FMT_XML)
+    except FileExistsError:
+        raise AmpliTubeError(f"Ya existe {out}. No se sobrescribe: elige otro nombre.") from None
+    with open(out, "rb") as fh:                    # re-read what landed before reporting success
+        check = plistlib.load(fh)
+    decoded, end = valuetree_decode(check["jucePluginState"])
+    if end != len(check["jucePluginState"]) or decoded[1][0][2] != preset_data:
+        raise AmpliTubeError(f"{out} se escribió pero no se relee igual.")
+    return out
 
 
 class AmpliTubeError(Exception):
@@ -678,6 +836,19 @@ def cmd_clone(args):
     print(("NO se escribió (--dry-run): " if args.dry_run else "Escrito: ") + str(out))
 
 
+def cmd_export_logic(args):
+    template = load_json(AU_TEMPLATE_FILE, "make-template <aupreset guardado por Logic>")
+    out = export_logic(args.root, template, args.preset, args.name)
+    print(f"Escrito: {out}")
+    print("En Logic: menú Setting de AmpliTube → AU Presets → Claude → " + args.name)
+
+
+def cmd_make_template(args):
+    template = make_au_template(Path(args.aupreset).expanduser())
+    AU_TEMPLATE_FILE.write_text(json.dumps(template, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(f"Plantilla escrita en {AU_TEMPLATE_FILE} (sin tono ni ruta personal).")
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--root", type=Path, default=DEFAULT_ROOT,
@@ -703,6 +874,12 @@ def main(argv=None) -> int:
     c.add_argument("--model", action="append", metavar="DESTINO=MODELO")
     c.add_argument("--dry-run", action="store_true")
     c.set_defaults(fn=cmd_clone)
+    e = sub.add_parser("export-logic", help="publicar un preset en el menú Setting de Logic (AU Presets → Claude)")
+    e.add_argument("preset"); e.add_argument("--name", required=True)
+    e.set_defaults(fn=cmd_export_logic)
+    t = sub.add_parser("make-template", help="(mantenimiento) extraer la plantilla de un .aupreset guardado por Logic")
+    t.add_argument("aupreset")
+    t.set_defaults(fn=cmd_make_template)
     args = parser.parse_args(argv)
     try:
         args.fn(args)
