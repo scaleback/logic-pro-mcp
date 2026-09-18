@@ -11,5 +11,20 @@
   "tiene_edgar": false,
   "fuente": "Edgar 2026-09-18: cargó el preset Claude/«Prueba 80s con delay» (este GUID en StompA1.1) y AmpliTube lo muestra como DDelay.",
   "fuente_licencia": "Captura de Edgar 2026-09-18: DDelay con candado en el navegador de equipo."
+ },
+ "e11b1dc5-1f7d-42ad-af30-0539b3646b3c": {
+  "display_name": "Delay",
+  "tiene_edgar": true,
+  "fuente": "Edgar 2026-09-18: cargó Claude/«Prueba licencias delays» y reportó nombre, posición y sin candado. Pedalera (StompA1.2), después del Noise Gate."
+ },
+ "1189979a-db5d-4dc1-9228-7bd974d8a8c5": {
+  "display_name": "Digital Delay",
+  "tiene_edgar": true,
+  "fuente": "Edgar 2026-09-18: cargó Claude/«Prueba licencias delays» y reportó nombre, posición y sin candado. FX Loop (LoopFxA.0), conectado a la cabecera del ampli."
+ },
+ "48e7b721-d57a-4c34-813b-95d8091d5eda": {
+  "display_name": "EchoMan",
+  "tiene_edgar": true,
+  "fuente": "Edgar 2026-09-18: cargó Claude/«Prueba licencias delays» y reportó nombre, posición y sin candado. Rack (RackA.0), después de las cabinas."
  }
 }

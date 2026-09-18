@@ -7,6 +7,7 @@ no se redistribuyen archivos de IK, y los tests no dependen del disco de Edgar.
 """
 
 import json
+import plistlib
 import shutil
 import sys
 import tempfile
@@ -20,6 +21,7 @@ import amplitube as at  # noqa: E402
 EMPTY = at.EMPTY_SLOT
 AMP_ONE = "aaaaaaaa-0000-0000-0000-000000000001"
 AMP_TWO = "aaaaaaaa-0000-0000-0000-000000000002"
+AMP_THREE = "aaaaaaaa-0000-0000-0000-000000000003"
 OVERDRIVE = "bbbbbbbb-0000-0000-0000-000000000001"
 COMP = "bbbbbbbb-0000-0000-0000-000000000002"
 DELAY = "cccccccc-0000-0000-0000-000000000001"
@@ -81,7 +83,7 @@ class Fixture:
             OVERDRIVE, '<Slot0 Bypass="0" Drive="99" Tone="4" />',
             DELAY, '<Slot0 Bypass="0" Time="9999" Mix="20" />',
         ))
-        self.vocab = at.build_vocab(self.root, confirmed_file=None)
+        self.vocab = at.build_vocab(self.root, confirmed_file=None, license_plist=None)
 
     def clone(self, *args, **kwargs):
         return at.clone_preset(self.root, self.vocab, *args, **kwargs)
@@ -118,14 +120,14 @@ class VocabTests(unittest.TestCase):
     def test_confirmed_names_win_and_carry_their_source(self):
         names = self.f.dir / "confirmados.json"
         names.write_text(json.dumps({AMP_ONE: {"display_name": "Plexi Mini", "fuente": "prueba"}}))
-        vocab = at.build_vocab(self.f.root, confirmed_file=names)
+        vocab = at.build_vocab(self.f.root, confirmed_file=names, license_plist=None)
         self.assertEqual(vocab["models"][AMP_ONE]["display_name"], "Plexi Mini")
         self.assertEqual(vocab["models"][AMP_ONE]["display_source"], "prueba")
 
     def test_license_status_is_only_what_edgar_confirmed(self):
         names = self.f.dir / "confirmados.json"
         names.write_text(json.dumps({DELAY: {"display_name": "Eco", "fuente": "x", "tiene_edgar": False}}))
-        vocab = at.build_vocab(self.f.root, confirmed_file=names)
+        vocab = at.build_vocab(self.f.root, confirmed_file=names, license_plist=None)
         self.assertIs(vocab["models"][DELAY]["owned"], False)
         self.assertIsNone(vocab["models"][COMP]["owned"])          # unknown stays unknown
         self.assertEqual(at.lock(vocab["models"][DELAY]), " [candado]")
@@ -272,6 +274,81 @@ class ModelSwapTests(unittest.TestCase):
     def test_ambiguous_or_unknown_names_are_refused(self):
         with self.assertRaises(at.AmpliTubeError):
             self.f.clone("Base", "X", models=["AmpA=NoExiste"])
+
+
+class LicensePlistTests(unittest.TestCase):
+    """AmpliTube's own license plist decides what Edgar owns (5/5 verified live)."""
+
+    def setUp(self):
+        self.f = Fixture()
+        self.plist = self.f.dir / "licencias.plist"
+        with open(self.plist, "wb") as fh:
+            plistlib.dump({
+                AMP_ONE: b"\x00" * 16, OVERDRIVE: b"\x01" * 16,
+                "SerialNumber": "SECRETO-123", "AuthCode": "SECRETO-456", "UserSerial": "SECRETO-789",
+            }, fh)
+
+    def tearDown(self):
+        self.f.cleanup()
+
+    def vocab(self, **kw):
+        return at.build_vocab(self.f.root, license_plist=self.plist, **({"confirmed_file": None} | kw))
+
+    def test_present_means_owned_absent_means_locked(self):
+        models = self.vocab()["models"]
+        self.assertIs(models[AMP_ONE]["owned"], True)
+        self.assertIs(models[OVERDRIVE]["owned"], True)
+        self.assertIs(models[AMP_TWO]["owned"], False)
+        self.assertIs(models[DELAY]["owned"], False)
+        self.assertEqual(models[AMP_TWO]["owned_source"], "plist de licencias de AmpliTube")
+
+    def test_secrets_in_the_plist_never_reach_the_vocabulary(self):
+        dumped = json.dumps(self.vocab())
+        for secret in ("SECRETO-123", "SECRETO-456", "SECRETO-789", "SerialNumber", "AuthCode"):
+            self.assertNotIn(secret, dumped)
+
+    def test_missing_plist_leaves_everything_unknown(self):
+        vocab = at.build_vocab(self.f.root, confirmed_file=None, license_plist=self.f.dir / "no-existe.plist")
+        self.assertTrue(all(m["owned"] is None for m in vocab["models"].values()))
+
+    def test_edgars_confirmation_wins_over_the_plist(self):
+        names = self.f.dir / "confirmados.json"
+        names.write_text(json.dumps({AMP_ONE: {"display_name": "X", "fuente": "y", "tiene_edgar": False}}))
+        model = self.vocab(confirmed_file=names)["models"][AMP_ONE]
+        self.assertIs(model["owned"], False)
+        self.assertEqual(model["owned_source"], "confirmado por Edgar")
+
+    def test_index_carries_ownership_for_search_mio(self):
+        index = at.build_index(self.f.root, self.vocab())
+        base = next(p for p in index if p["name"] == "Base")
+        self.assertIs(base["amp"]["owned"], True)
+        self.assertEqual({e["label"]: e["owned"] for e in base["effects"]}[
+            at.label(self.vocab()["models"][DELAY], DELAY)], False)
+
+
+class MultiChannelAmpTests(unittest.TestCase):
+    """Regression: the model name is the LAST underscore segment.
+
+    Taking everything after the first underscore turned
+    "Ch1_Volume_MarshallJVMSatriani" into the model "Volume_MarshallJVMSatriani"
+    and left the index unable to find the amp's gain.
+    """
+
+    def test_multi_channel_amp_name_and_gain(self):
+        f = Fixture()
+        try:
+            xml = preset_xml(AMP_THREE, "AmpThree", "7", OVERDRIVE,
+                             '<Slot0 Bypass="0" Drive="5" Tone="4" />',
+                             DELAY, '<Slot0 Bypass="0" Time="300" Mix="20" />')
+            xml = xml.replace('<Amp Gain_AmpThree="7" Bass_AmpThree="5" Switch_AmpThree="LEFT" />',
+                              '<Amp Ch1_Gain_AmpThree="7" Ch1_Volume_AmpThree="3" Presence_AmpThree="5" />')
+            (f.root / "Fabrica" / "Multi.at5p").write_text(xml)
+            vocab = at.build_vocab(f.root, confirmed_file=None, license_plist=None)
+            self.assertEqual(vocab["models"][AMP_THREE]["internal_name"], "AmpThree")
+            multi = next(p for p in at.build_index(f.root, vocab) if p["name"] == "Multi")
+            self.assertEqual(multi["amp"]["gain"], "7")
+        finally:
+            f.cleanup()
 
 
 class IndexTests(unittest.TestCase):

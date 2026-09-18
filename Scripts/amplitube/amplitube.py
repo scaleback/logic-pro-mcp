@@ -44,6 +44,13 @@ DEFAULT_ROOT = Path.home() / "Documents" / "IK Multimedia" / "AmpliTube 5" / "Pr
 VOCAB_FILE = HERE / "vocabulario.json"
 INDEX_FILE = HERE / "presets-indice.json"
 CONFIRMED_FILE = HERE / "nombres-confirmados.json"
+# AmpliTube keeps one entry per licensed piece of gear here, keyed by the gear's
+# GUID. Verified 2026-09-18 against Edgar's own screens, 5 of 5: the three
+# delays he owns are keys, the two he saw with a lock (DDelay, MiniPlex 20) are
+# not. The file ALSO holds SerialNumber, UserSerial and AuthCode: only
+# GUID-shaped keys are ever read, and no value is read at all.
+LICENSE_PLIST = Path.home() / "Library" / "Preferences" / "com.ikmultimedia.AmpliTube 5.plist"
+GUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 
 CLAUDE_DIR = "Claude"
 # Verified 2026-09-18 over the 776 factory presets: this GUID fills every empty
@@ -66,6 +73,19 @@ NOT_TONE = ("MidiAssignments", "MetaInfo")
 REF_ATTR = re.compile(r"^(Model|Stomp\d|CabModel|SpeakerModel\d|TunerType|Mic\dModel)$")
 # On/off switches. `DI_PhaseDelay` ends in "Delay", so it stays a number.
 BOOLEAN_ATTR = re.compile(r"(Bypass|Mute|Solo|Phase)$")
+
+
+def licensed_guids(path: Path | None) -> set[str] | None:
+    """GUIDs of the gear AmpliTube has a license for, or None if unknowable.
+
+    Absent file → None, so every gear stays "unknown" rather than "locked".
+    """
+    if path is None or not path.exists():
+        return None
+    import plistlib
+    with open(path, "rb") as fh:
+        keys = plistlib.load(fh).keys()
+    return {k for k in keys if GUID_RE.fullmatch(k)}
 
 
 class AmpliTubeError(Exception):
@@ -128,7 +148,8 @@ def label(model: dict, guid: str) -> str:
     return f"{model['kind']} {guid[:8]} ({keys})"
 
 
-def build_vocab(root: Path, confirmed_file: Path | None = CONFIRMED_FILE) -> dict:
+def build_vocab(root: Path, confirmed_file: Path | None = CONFIRMED_FILE,
+                license_plist: Path | None = LICENSE_PLIST) -> dict:
     values: dict = defaultdict(lambda: defaultdict(list))
     blocks: dict = defaultdict(lambda: defaultdict(list))
     meta: dict[str, dict] = {}
@@ -170,7 +191,9 @@ def build_vocab(root: Path, confirmed_file: Path | None = CONFIRMED_FILE) -> dic
                     for k, v in amp.attrib.items():
                         values[guid][k].append(v)
                         if "_" in k:
-                            m["names"][k.split("_", 1)[1]] += 1
+                            # The model is the LAST segment: multi-channel amps
+                            # name knobs "Ch1_Volume_MarshallJVMSatriani".
+                            m["names"][k.rsplit("_", 1)[1]] += 1
             elif tag in SLOT_CONTAINERS:
                 for i in range(SLOTS_PER_CONTAINER):
                     guid, slot = node.get(f"Stomp{i}"), node.find(f"Slot{i}")
@@ -188,6 +211,7 @@ def build_vocab(root: Path, confirmed_file: Path | None = CONFIRMED_FILE) -> dic
     if confirmed_file is not None and confirmed_file.exists():
         confirmed = json.loads(confirmed_file.read_text(encoding="utf-8"))
 
+    licensed = licensed_guids(license_plist)
     models = {}
     for guid, m in meta.items():
         entry = {
@@ -198,6 +222,7 @@ def build_vocab(root: Path, confirmed_file: Path | None = CONFIRMED_FILE) -> dic
             # True/False only when Edgar confirmed it: most factory presets use
             # gear with a lock, and a tone built on locked gear is a demo.
             "owned": None,
+            "owned_source": None,
             "categories": sorted({category(t) for t in m["tags"]}),
             "uses": m["uses"],
             "example": m["example"],
@@ -207,9 +232,19 @@ def build_vocab(root: Path, confirmed_file: Path | None = CONFIRMED_FILE) -> dic
             entry["display_name"] = confirmed[guid]["display_name"]
             entry["display_source"] = confirmed[guid]["fuente"]
             entry["owned"] = confirmed[guid].get("tiene_edgar")
+            if entry["owned"] is not None:
+                entry["owned_source"] = "confirmado por Edgar"
         elif guid in midi_names:
             entry["display_name"] = midi_names[guid].most_common(1)[0][0]
             entry["display_source"] = "MidiAssignments de presets de fábrica (escrito por IK)"
+        # Absent from the plist counts as locked. Of 21 Custom Shop (free)
+        # presets, 19 use only gear that IS in the plist, so free gear is
+        # registered there too; 2 models remain unexplained. Guessing "locked"
+        # wrongly costs Edgar one option; guessing "owned" wrongly hands him a
+        # demo instead of a tone.
+        if entry["owned"] is None and licensed is not None:
+            entry["owned"] = guid in licensed
+            entry["owned_source"] = "plist de licencias de AmpliTube"
         models[guid] = entry
 
     return {
@@ -242,12 +277,17 @@ def build_index(root: Path, vocab: dict) -> list[dict]:
             amp = node.find("Amp") if node is not None else None
             if node is None or amp is None or not node.get("Model"):
                 continue
-            knobs = {k.split("_", 1)[0].lower(): v for k, v in amp.attrib.items() if "_" in k}
+            knobs = {k.rsplit("_", 1)[0].lower(): v for k, v in amp.attrib.items() if "_" in k}
+
+            def knob(name: str, knobs=knobs):
+                # "gain" on a one-channel amp, "ch1_gain" on a multi-channel one.
+                return knobs.get(name) or next((v for kn, v in knobs.items() if kn.endswith("_" + name)), None)
+
             amps.append({
                 "container": tag, "guid": node.get("Model"), "label": name_of(node.get("Model")),
                 "owned": models.get(node.get("Model"), {}).get("owned"),
-                "gain": knobs.get("gain"), "bass": knobs.get("bass"), "mid": knobs.get("mid"),
-                "treble": knobs.get("treble"), "master": knobs.get("master"),
+                "gain": knob("gain"), "bass": knob("bass"), "mid": knob("mid"),
+                "treble": knob("treble"), "master": knob("master"),
             })
         effects = []
         for tag in SLOT_CONTAINERS:
@@ -531,7 +571,9 @@ def cmd_vocab(args):
     VOCAB_FILE.write_text(json.dumps(vocab, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     kinds = Counter(m["kind"] for m in vocab["models"].values())
     named = sum(1 for m in vocab["models"].values() if m["display_name"])
+    owned = Counter(m["kind"] for m in vocab["models"].values() if m["owned"] is True)
     print(f"{vocab['presets_read']} presets leídos → {dict(kinds)}; {named} con nombre de pantalla.")
+    print(f"Equipo que Edgar tiene: {dict(owned) or 'desconocido (no se encontró el plist de licencias)'}")
     print(f"Escrito {VOCAB_FILE}")
 
 
@@ -554,6 +596,9 @@ def cmd_search(args):
             continue
         if args.texto and args.texto.lower() not in p["name"].lower():
             continue
+        if args.mio and not (p["amp"] and p["amp"]["owned"] is True
+                             and all(e["owned"] is True for e in p["effects"])):
+            continue
         hits.append(p)
     for p in hits[: args.limit]:
         amp = (p["amp"]["label"] + lock(p["amp"])) if p["amp"] else "—"
@@ -567,6 +612,8 @@ def cmd_search(args):
 def cmd_models(args):
     for guid, m in load_json(VOCAB_FILE, "vocab")["models"].items():
         if args.tipo and m["kind"] != args.tipo:
+            continue
+        if args.mio and m["owned"] is not True:
             continue
         name = label(m, guid)
         keys = [k for k in m["params"] if k != "Bypass"]
@@ -641,9 +688,11 @@ def main(argv=None) -> int:
     s = sub.add_parser("search", help="buscar presets de fábrica para usar de base")
     s.add_argument("--ampli"); s.add_argument("--caracter"); s.add_argument("--estilo")
     s.add_argument("--efecto"); s.add_argument("--texto"); s.add_argument("--limit", type=int, default=15)
+    s.add_argument("--mio", action="store_true", help="solo presets con ampli y efectos que Edgar tiene")
     s.set_defaults(fn=cmd_search)
     m = sub.add_parser("models", help="listar amplis y efectos conocidos")
     m.add_argument("--tipo", choices=["ampli", "efecto"]); m.add_argument("--buscar")
+    m.add_argument("--mio", action="store_true", help="solo equipo que Edgar tiene")
     m.set_defaults(fn=cmd_models)
     sh = sub.add_parser("show", help="ver todas las rutas editables de un preset")
     sh.add_argument("preset"); sh.add_argument("--todo", action="store_true", help="incluir bloques vacíos")

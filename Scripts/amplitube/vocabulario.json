@@ -9,7 +9,8 @@
    "internal_name": "53Bassman",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -44,7 +45,8 @@
    "internal_name": "AmericanTubeClean",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -159,7 +161,8 @@
    "internal_name": "AmericanTubeClean2",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -218,7 +221,8 @@
    "internal_name": "AmpB750",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -277,7 +281,8 @@
    "internal_name": "AmpegB15",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -350,7 +355,8 @@
    "internal_name": "AmpegBA500",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -469,7 +475,8 @@
    "internal_name": "AmpegHeritageB15N",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -540,7 +547,8 @@
    "internal_name": "AmpegSVT4Pro",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -695,7 +703,8 @@
    "internal_name": "AmpegSVTClassic",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -760,7 +769,8 @@
    "internal_name": "AmpegSVTVR",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -872,7 +882,8 @@
    "internal_name": "AmpegV4B",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -937,7 +948,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -1020,7 +1032,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -1067,7 +1080,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -1180,7 +1194,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -1221,7 +1236,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -1268,7 +1284,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -1351,7 +1368,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -1404,7 +1422,8 @@
    "internal_name": "AmpPRSArchon",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -1511,7 +1530,8 @@
    "internal_name": "AmpScholtzRockmanX100",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -1564,7 +1584,8 @@
    "internal_name": "AmpVoxAC30BrianMay",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -1587,7 +1608,8 @@
    "internal_name": "Bassman",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -1634,7 +1656,8 @@
    "internal_name": "BritishTubeLead1",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -1749,7 +1772,8 @@
    "internal_name": "CaliforniaTweed",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -1818,7 +1842,8 @@
    "internal_name": "Champ57",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -1841,7 +1866,8 @@
    "internal_name": "Champion",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -1864,7 +1890,8 @@
    "internal_name": "Combo150MB",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -1947,7 +1974,8 @@
    "internal_name": "Darrell100",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -2030,7 +2058,8 @@
    "internal_name": "Deacy",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -2053,7 +2082,8 @@
    "internal_name": "Deluxe57",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -2082,7 +2112,8 @@
    "internal_name": "DeluxeReverb",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -2135,7 +2166,8 @@
    "internal_name": "Diezel",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -2323,7 +2355,8 @@
    "internal_name": "Ecstasy",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -2470,7 +2503,8 @@
    "internal_name": "ENGLE650",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -2565,7 +2599,8 @@
    "internal_name": "Fender57CustomChamp",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -2594,7 +2629,8 @@
    "internal_name": "Fender57CustomDeluxe",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -2641,7 +2677,8 @@
    "internal_name": "Fender65CustomSuperReverb",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -2706,7 +2743,8 @@
    "internal_name": "FenderBassman",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -2765,7 +2803,8 @@
    "internal_name": "FenderCustomBandmaster",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -2824,7 +2863,8 @@
    "internal_name": "FenderCustomPro",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -2883,7 +2923,8 @@
    "internal_name": "FenderShowman",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -2942,7 +2983,8 @@
    "internal_name": "FenderTwinReverbBright",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -3001,7 +3043,8 @@
    "internal_name": "HiAmp",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -3066,7 +3109,8 @@
    "internal_name": "JCM800AT4",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -3125,7 +3169,8 @@
    "internal_name": "Leslie3300",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -3178,7 +3223,8 @@
    "internal_name": "LeslieG37",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -3243,7 +3289,8 @@
    "internal_name": "LeslieModel122",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -3296,7 +3343,8 @@
    "internal_name": "LeslieModel122A",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -3349,7 +3397,8 @@
    "internal_name": "LeslieModel147",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -3402,7 +3451,8 @@
    "internal_name": "MarshallAFD100",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -3461,7 +3511,8 @@
    "internal_name": "MarshallJCMSlash",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -3532,7 +3583,8 @@
    "internal_name": "MarshallJMP1",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -3623,7 +3675,8 @@
    "internal_name": "MarshallJTM45",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -3694,7 +3747,8 @@
    "internal_name": "MarshallJTM45MkII",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -3748,12 +3802,363 @@
     }
    }
   },
+  "57c43635-a976-46e0-a5c1-ef843bbba616": {
+   "kind": "ampli",
+   "internal_name": "MarshallJVMSatriani",
+   "display_name": null,
+   "display_source": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
+   "categories": [
+    "Amp"
+   ],
+   "uses": 23,
+   "example": {
+    "preset": "AmpliTube Collections/AmpliTube Joe Satriani/Discography/Borg Sex.at5p",
+    "container": "AmpA"
+   },
+   "params": {
+    "Clean_Bass_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 2.57812,
+     "max": 10.0,
+     "seen": 23
+    },
+    "Clean_Gain_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 4.29688,
+     "max": 10.0,
+     "seen": 23
+    },
+    "Clean_Gate_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 5.0,
+     "max": 7.57812,
+     "seen": 23
+    },
+    "Clean_Green_GateOn_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 0.0,
+     "max": 1.0,
+     "seen": 23
+    },
+    "Clean_MasterType_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 0.0,
+     "max": 0.0,
+     "seen": 23
+    },
+    "Clean_Middle_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 2.8125,
+     "max": 5.0,
+     "seen": 23
+    },
+    "Clean_Mode_MarshallJVMSatriani": {
+     "type": "enum",
+     "values": [
+      "Green",
+      "Red"
+     ],
+     "seen": 23
+    },
+    "Clean_Orange_GateOn_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 0.0,
+     "max": 0.0,
+     "seen": 23
+    },
+    "Clean_Red_GateOn_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 0.0,
+     "max": 0.0,
+     "seen": 23
+    },
+    "Clean_Treble_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 2.42188,
+     "max": 5.54688,
+     "seen": 23
+    },
+    "Clean_Volume_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 2.96875,
+     "max": 10.0,
+     "seen": 23
+    },
+    "Crunch_Bass_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 3.28125,
+     "max": 8.4375,
+     "seen": 23
+    },
+    "Crunch_Gain_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 2.8125,
+     "max": 10.0,
+     "seen": 23
+    },
+    "Crunch_Gate_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 3.98438,
+     "max": 5.0,
+     "seen": 23
+    },
+    "Crunch_Green_GateOn_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 0.0,
+     "max": 1.0,
+     "seen": 23
+    },
+    "Crunch_MasterType_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 0.0,
+     "max": 0.0,
+     "seen": 23
+    },
+    "Crunch_Middle_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 1.95312,
+     "max": 7.8125,
+     "seen": 23
+    },
+    "Crunch_Mode_MarshallJVMSatriani": {
+     "type": "enum",
+     "values": [
+      "Green",
+      "Orange",
+      "Red"
+     ],
+     "seen": 23
+    },
+    "Crunch_Orange_GateOn_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 0.0,
+     "max": 1.0,
+     "seen": 23
+    },
+    "Crunch_Red_GateOn_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 0.0,
+     "max": 1.0,
+     "seen": 23
+    },
+    "Crunch_Treble_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 2.1875,
+     "max": 8.20313,
+     "seen": 23
+    },
+    "Crunch_Volume_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 4.14063,
+     "max": 9.21875,
+     "seen": 23
+    },
+    "Master1_Presence_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 0.0,
+     "max": 10.0,
+     "seen": 23
+    },
+    "Master1_Reso_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 2.89062,
+     "max": 10.0,
+     "seen": 23
+    },
+    "Master1_Volume_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 4.60938,
+     "max": 10.0,
+     "seen": 23
+    },
+    "Master2_Presence_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 5.0,
+     "max": 5.0,
+     "seen": 23
+    },
+    "Master2_Reso_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 5.0,
+     "max": 5.0,
+     "seen": 23
+    },
+    "Master2_Volume_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 5.0,
+     "max": 9.6875,
+     "seen": 23
+    },
+    "Mode_MarshallJVMSatriani": {
+     "type": "enum",
+     "values": [
+      "Clean",
+      "Crunch",
+      "OD1",
+      "OD2"
+     ],
+     "seen": 23
+    },
+    "OD1_Bass_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 1.5625,
+     "max": 6.95313,
+     "seen": 23
+    },
+    "OD1_Gain_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 4.375,
+     "max": 10.0,
+     "seen": 23
+    },
+    "OD1_Gate_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 2.0,
+     "max": 7.34375,
+     "seen": 23
+    },
+    "OD1_Green_GateOn_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 0.0,
+     "max": 1.0,
+     "seen": 23
+    },
+    "OD1_MasterType_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 0.0,
+     "max": 0.0,
+     "seen": 23
+    },
+    "OD1_MidShift_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 0.0,
+     "max": 1.0,
+     "seen": 23
+    },
+    "OD1_Middle_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 3.20312,
+     "max": 5.0,
+     "seen": 23
+    },
+    "OD1_Mode_MarshallJVMSatriani": {
+     "type": "enum",
+     "values": [
+      "Green",
+      "Orange",
+      "Red"
+     ],
+     "seen": 23
+    },
+    "OD1_Orange_GateOn_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 0.0,
+     "max": 1.0,
+     "seen": 23
+    },
+    "OD1_Red_GateOn_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 0.0,
+     "max": 1.0,
+     "seen": 23
+    },
+    "OD1_Treble_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 3.35938,
+     "max": 10.0,
+     "seen": 23
+    },
+    "OD1_Volume_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 5.0,
+     "max": 8.51562,
+     "seen": 23
+    },
+    "OD2_Bass_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 2.8125,
+     "max": 10.0,
+     "seen": 23
+    },
+    "OD2_Gain_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 4.14063,
+     "max": 10.0,
+     "seen": 23
+    },
+    "OD2_Gate_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 1.60938,
+     "max": 3.56251,
+     "seen": 23
+    },
+    "OD2_Green_GateOn_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 1.0,
+     "max": 1.0,
+     "seen": 23
+    },
+    "OD2_MasterType_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 0.0,
+     "max": 0.0,
+     "seen": 23
+    },
+    "OD2_MidShift_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 0.0,
+     "max": 1.0,
+     "seen": 23
+    },
+    "OD2_Middle_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 3.51562,
+     "max": 8.125,
+     "seen": 23
+    },
+    "OD2_Mode_MarshallJVMSatriani": {
+     "type": "enum",
+     "values": [
+      "Green",
+      "Red"
+     ],
+     "seen": 23
+    },
+    "OD2_Orange_GateOn_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 1.0,
+     "max": 1.0,
+     "seen": 23
+    },
+    "OD2_Red_GateOn_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 1.0,
+     "max": 1.0,
+     "seen": 23
+    },
+    "OD2_Treble_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 1.48438,
+     "max": 7.10937,
+     "seen": 23
+    },
+    "OD2_Volume_MarshallJVMSatriani": {
+     "type": "num",
+     "min": 3.51562,
+     "max": 10.0,
+     "seen": 23
+    }
+   }
+  },
   "e1eed2cf-6777-46c4-ada2-65df0d7afc46": {
    "kind": "ampli",
    "internal_name": "MarshallMajor",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -3824,7 +4229,8 @@
    "internal_name": "MarshallSilverJubilee",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -3895,7 +4301,8 @@
    "internal_name": "MesaDualRectifier",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -4070,7 +4477,8 @@
    "internal_name": "MesaMarkIICPlus",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -4219,7 +4627,8 @@
    "internal_name": "MesaMarkIII",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -4374,7 +4783,8 @@
    "internal_name": "MesaMarkIV",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -4603,7 +5013,8 @@
    "internal_name": "MesaMarkV",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -4957,7 +5368,8 @@
    "internal_name": "MesaMKIIIClean",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -5076,7 +5488,8 @@
    "internal_name": "MesaTA30",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -5207,7 +5620,8 @@
    "internal_name": "MesaTripleCrown",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -5425,7 +5839,8 @@
    "internal_name": "MesaTripleRectifier",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -5597,7 +6012,8 @@
    "internal_name": "MetalCleanT",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -5656,7 +6072,8 @@
    "internal_name": "MetalHead",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -5709,7 +6126,8 @@
    "internal_name": "MetalLeadT",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -5768,7 +6186,8 @@
    "internal_name": "MetalLeadV",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -5828,6 +6247,7 @@
    "display_name": "MiniPlex 20",
    "display_source": "Captura de Edgar 2026-09-18: con el preset de fábrica \"80's\" cargado, AmpliTube muestra este ampli como MiniPlex 20; los tres amplis del preset usan este GUID.",
    "owned": false,
+   "owned_source": "confirmado por Edgar",
    "categories": [
     "Amp"
    ],
@@ -5883,7 +6303,8 @@
    "internal_name": "OrangeDualTerror",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -5948,7 +6369,8 @@
    "internal_name": "OrangeOR50",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -6001,7 +6423,8 @@
    "internal_name": "Peavey5150Satriani",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -6108,7 +6531,8 @@
    "internal_name": "Princeton",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -6161,7 +6585,8 @@
    "internal_name": "Roland120",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -6239,7 +6664,8 @@
    "internal_name": "Roland120Dime",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -6317,7 +6743,8 @@
    "internal_name": "Silvertone1484",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -6394,7 +6821,8 @@
    "internal_name": "SolidStateBassPre",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -6453,7 +6881,8 @@
    "internal_name": "Sunn1200",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -6518,7 +6947,8 @@
    "internal_name": "Supersonic",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -6577,7 +7007,8 @@
    "internal_name": "TwinAmp",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -6642,7 +7073,8 @@
    "internal_name": "VibroKing",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -6719,7 +7151,8 @@
    "internal_name": "VibroVerb",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -6784,7 +7217,8 @@
    "internal_name": "VintageMetalLead",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -6838,361 +7272,13 @@
     }
    }
   },
-  "57c43635-a976-46e0-a5c1-ef843bbba616": {
-   "kind": "ampli",
-   "internal_name": "Volume_MarshallJVMSatriani",
-   "display_name": null,
-   "display_source": null,
-   "owned": null,
-   "categories": [
-    "Amp"
-   ],
-   "uses": 23,
-   "example": {
-    "preset": "AmpliTube Collections/AmpliTube Joe Satriani/Discography/Borg Sex.at5p",
-    "container": "AmpA"
-   },
-   "params": {
-    "Clean_Bass_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 2.57812,
-     "max": 10.0,
-     "seen": 23
-    },
-    "Clean_Gain_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 4.29688,
-     "max": 10.0,
-     "seen": 23
-    },
-    "Clean_Gate_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 5.0,
-     "max": 7.57812,
-     "seen": 23
-    },
-    "Clean_Green_GateOn_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 0.0,
-     "max": 1.0,
-     "seen": 23
-    },
-    "Clean_MasterType_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 0.0,
-     "max": 0.0,
-     "seen": 23
-    },
-    "Clean_Middle_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 2.8125,
-     "max": 5.0,
-     "seen": 23
-    },
-    "Clean_Mode_MarshallJVMSatriani": {
-     "type": "enum",
-     "values": [
-      "Green",
-      "Red"
-     ],
-     "seen": 23
-    },
-    "Clean_Orange_GateOn_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 0.0,
-     "max": 0.0,
-     "seen": 23
-    },
-    "Clean_Red_GateOn_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 0.0,
-     "max": 0.0,
-     "seen": 23
-    },
-    "Clean_Treble_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 2.42188,
-     "max": 5.54688,
-     "seen": 23
-    },
-    "Clean_Volume_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 2.96875,
-     "max": 10.0,
-     "seen": 23
-    },
-    "Crunch_Bass_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 3.28125,
-     "max": 8.4375,
-     "seen": 23
-    },
-    "Crunch_Gain_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 2.8125,
-     "max": 10.0,
-     "seen": 23
-    },
-    "Crunch_Gate_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 3.98438,
-     "max": 5.0,
-     "seen": 23
-    },
-    "Crunch_Green_GateOn_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 0.0,
-     "max": 1.0,
-     "seen": 23
-    },
-    "Crunch_MasterType_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 0.0,
-     "max": 0.0,
-     "seen": 23
-    },
-    "Crunch_Middle_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 1.95312,
-     "max": 7.8125,
-     "seen": 23
-    },
-    "Crunch_Mode_MarshallJVMSatriani": {
-     "type": "enum",
-     "values": [
-      "Green",
-      "Orange",
-      "Red"
-     ],
-     "seen": 23
-    },
-    "Crunch_Orange_GateOn_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 0.0,
-     "max": 1.0,
-     "seen": 23
-    },
-    "Crunch_Red_GateOn_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 0.0,
-     "max": 1.0,
-     "seen": 23
-    },
-    "Crunch_Treble_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 2.1875,
-     "max": 8.20313,
-     "seen": 23
-    },
-    "Crunch_Volume_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 4.14063,
-     "max": 9.21875,
-     "seen": 23
-    },
-    "Master1_Presence_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 0.0,
-     "max": 10.0,
-     "seen": 23
-    },
-    "Master1_Reso_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 2.89062,
-     "max": 10.0,
-     "seen": 23
-    },
-    "Master1_Volume_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 4.60938,
-     "max": 10.0,
-     "seen": 23
-    },
-    "Master2_Presence_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 5.0,
-     "max": 5.0,
-     "seen": 23
-    },
-    "Master2_Reso_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 5.0,
-     "max": 5.0,
-     "seen": 23
-    },
-    "Master2_Volume_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 5.0,
-     "max": 9.6875,
-     "seen": 23
-    },
-    "Mode_MarshallJVMSatriani": {
-     "type": "enum",
-     "values": [
-      "Clean",
-      "Crunch",
-      "OD1",
-      "OD2"
-     ],
-     "seen": 23
-    },
-    "OD1_Bass_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 1.5625,
-     "max": 6.95313,
-     "seen": 23
-    },
-    "OD1_Gain_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 4.375,
-     "max": 10.0,
-     "seen": 23
-    },
-    "OD1_Gate_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 2.0,
-     "max": 7.34375,
-     "seen": 23
-    },
-    "OD1_Green_GateOn_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 0.0,
-     "max": 1.0,
-     "seen": 23
-    },
-    "OD1_MasterType_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 0.0,
-     "max": 0.0,
-     "seen": 23
-    },
-    "OD1_MidShift_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 0.0,
-     "max": 1.0,
-     "seen": 23
-    },
-    "OD1_Middle_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 3.20312,
-     "max": 5.0,
-     "seen": 23
-    },
-    "OD1_Mode_MarshallJVMSatriani": {
-     "type": "enum",
-     "values": [
-      "Green",
-      "Orange",
-      "Red"
-     ],
-     "seen": 23
-    },
-    "OD1_Orange_GateOn_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 0.0,
-     "max": 1.0,
-     "seen": 23
-    },
-    "OD1_Red_GateOn_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 0.0,
-     "max": 1.0,
-     "seen": 23
-    },
-    "OD1_Treble_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 3.35938,
-     "max": 10.0,
-     "seen": 23
-    },
-    "OD1_Volume_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 5.0,
-     "max": 8.51562,
-     "seen": 23
-    },
-    "OD2_Bass_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 2.8125,
-     "max": 10.0,
-     "seen": 23
-    },
-    "OD2_Gain_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 4.14063,
-     "max": 10.0,
-     "seen": 23
-    },
-    "OD2_Gate_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 1.60938,
-     "max": 3.56251,
-     "seen": 23
-    },
-    "OD2_Green_GateOn_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 1.0,
-     "max": 1.0,
-     "seen": 23
-    },
-    "OD2_MasterType_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 0.0,
-     "max": 0.0,
-     "seen": 23
-    },
-    "OD2_MidShift_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 0.0,
-     "max": 1.0,
-     "seen": 23
-    },
-    "OD2_Middle_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 3.51562,
-     "max": 8.125,
-     "seen": 23
-    },
-    "OD2_Mode_MarshallJVMSatriani": {
-     "type": "enum",
-     "values": [
-      "Green",
-      "Red"
-     ],
-     "seen": 23
-    },
-    "OD2_Orange_GateOn_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 1.0,
-     "max": 1.0,
-     "seen": 23
-    },
-    "OD2_Red_GateOn_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 1.0,
-     "max": 1.0,
-     "seen": 23
-    },
-    "OD2_Treble_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 1.48438,
-     "max": 7.10937,
-     "seen": 23
-    },
-    "OD2_Volume_MarshallJVMSatriani": {
-     "type": "num",
-     "min": 3.51562,
-     "max": 10.0,
-     "seen": 23
-    }
-   }
-  },
   "533d3c6c-b3cd-455c-a3a1-642016f5cda9": {
    "kind": "ampli",
    "internal_name": "VOXAC30",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -7251,7 +7337,8 @@
    "internal_name": "VOXCopperAC30",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -7323,7 +7410,8 @@
    "internal_name": "ZWreck",
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Amp"
    ],
@@ -7364,7 +7452,8 @@
    "internal_name": null,
    "display_name": "6 Band EQ",
    "display_source": "MidiAssignments de presets de fábrica (escrito por IK)",
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -7426,7 +7515,8 @@
    "internal_name": null,
    "display_name": "7 Band Graphic",
    "display_source": "MidiAssignments de presets de fábrica (escrito por IK)",
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Rack",
@@ -7508,7 +7598,8 @@
    "internal_name": null,
    "display_name": "Blender",
    "display_source": "MidiAssignments de presets de fábrica (escrito por IK)",
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -7564,7 +7655,8 @@
    "internal_name": null,
    "display_name": "Chorus",
    "display_source": "MidiAssignments de presets de fábrica (escrito por IK)",
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Rack",
@@ -7631,7 +7723,8 @@
    "internal_name": null,
    "display_name": "Compressor",
    "display_source": "MidiAssignments de presets de fábrica (escrito por IK)",
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "RackDI",
@@ -7677,7 +7770,8 @@
    "internal_name": null,
    "display_name": "Compressor",
    "display_source": "MidiAssignments de presets de fábrica (escrito por IK)",
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Stomp"
@@ -7714,6 +7808,7 @@
    "display_name": "DDelay",
    "display_source": "Edgar 2026-09-18: cargó el preset Claude/«Prueba 80s con delay» (este GUID en StompA1.1) y AmpliTube lo muestra como DDelay.",
    "owned": false,
+   "owned_source": "confirmado por Edgar",
    "categories": [
     "LoopFx",
     "Rack",
@@ -7777,448 +7872,82 @@
     }
    }
   },
-  "5aa37004-52de-4846-bb7b-1816d98562de": {
+  "e11b1dc5-1f7d-42ad-af30-0539b3646b3c": {
    "kind": "efecto",
    "internal_name": null,
-   "display_name": "Dime Noise Gate",
-   "display_source": "MidiAssignments de presets de fábrica (escrito por IK)",
-   "owned": null,
-   "categories": [
-    "Stomp"
-   ],
-   "uses": 8,
-   "example": {
-    "preset": "AmpliTube Collections/AmpliTube Dimebag Darrell CFH/CFH Distortion.at5p",
-    "container": "StompA1",
-    "slot": 2
-   },
-   "params": {
-    "Bypass": {
-     "type": "enum",
-     "values": [
-      "0",
-      "1"
-     ],
-     "seen": 8
-    },
-    "Filter": {
-     "type": "num",
-     "min": 40.0,
-     "max": 905.268,
-     "seen": 8
-    },
-    "Release": {
-     "type": "num",
-     "min": 1.0,
-     "max": 1.0,
-     "seen": 8
-    },
-    "Threshold": {
-     "type": "num",
-     "min": 2.89063,
-     "max": 10.0,
-     "seen": 8
-    }
-   }
-  },
-  "5e65abef-82eb-4995-b911-d5eca4f8291e": {
-   "kind": "efecto",
-   "internal_name": null,
-   "display_name": "Diode Overdrive",
-   "display_source": "MidiAssignments de presets de fábrica (escrito por IK)",
-   "owned": null,
-   "categories": [
-    "Stomp",
-    "StompStereo"
-   ],
-   "uses": 56,
-   "example": {
-    "preset": "AmpliTube 5/Ping Pong.at5p",
-    "container": "StompA1",
-    "slot": 4
-   },
-   "params": {
-    "Bypass": {
-     "type": "enum",
-     "values": [
-      "0",
-      "1"
-     ],
-     "seen": 56
-    },
-    "Drive": {
-     "type": "num",
-     "min": 0.0,
-     "max": 10.0,
-     "seen": 56
-    },
-    "Tone": {
-     "type": "num",
-     "min": 0.53125,
-     "max": 7.38086,
-     "seen": 56
-    },
-    "Volume": {
-     "type": "num",
-     "min": 0.0,
-     "max": 7.83466,
-     "seen": 56
-    }
-   }
-  },
-  "02643125-de84-4c94-b214-4d300652332b": {
-   "kind": "efecto",
-   "internal_name": null,
-   "display_name": null,
-   "display_source": null,
-   "owned": null,
-   "categories": [
-    "Rack"
-   ],
-   "uses": 1,
-   "example": {
-    "preset": "AmpliTube Collections/AmpliTube Brian May/Bijou.at5p",
-    "container": "RackA",
-    "slot": 1
-   },
-   "params": {
-    "Bypass": {
-     "type": "enum",
-     "values": [
-      "0",
-      "1"
-     ],
-     "seen": 1
-    },
-    "Chorus": {
-     "type": "num",
-     "min": 13.0,
-     "max": 13.0,
-     "seen": 1
-    },
-    "Mode": {
-     "type": "enum",
-     "values": [
-      "Vibrato"
-     ],
-     "seen": 1
-    },
-    "OutLevel": {
-     "type": "num",
-     "min": 1.0,
-     "max": 1.0,
-     "seen": 1
-    },
-    "StereoMode": {
-     "type": "enum",
-     "values": [
-      "Stereo"
-     ],
-     "seen": 1
-    },
-    "VibDepth": {
-     "type": "num",
-     "min": 0.0,
-     "max": 0.0,
-     "seen": 1
-    },
-    "VibRate": {
-     "type": "num",
-     "min": 0.1,
-     "max": 0.1,
-     "seen": 1
-    }
-   }
-  },
-  "0332d916-2ab2-4b7d-98c4-73a80a42b3b1": {
-   "kind": "efecto",
-   "internal_name": null,
-   "display_name": null,
-   "display_source": null,
-   "owned": null,
-   "categories": [
-    "RackDI"
-   ],
-   "uses": 1,
-   "example": {
-    "preset": "AmpliTube 5 MAX/Double Funk.at5p",
-    "container": "RackDI",
-    "slot": 0
-   },
-   "params": {
-    "Bypass": {
-     "type": "enum",
-     "values": [
-      "0",
-      "1"
-     ],
-     "seen": 1
-    },
-    "Drive": {
-     "type": "num",
-     "min": 0.0,
-     "max": 0.0,
-     "seen": 1
-    },
-    "FilterMode": {
-     "type": "enum",
-     "values": [
-      "HP"
-     ],
-     "seen": 1
-    },
-    "Gain": {
-     "type": "num",
-     "min": 5.98533,
-     "max": 5.98533,
-     "seen": 1
-    },
-    "Peak": {
-     "type": "num",
-     "min": 5.81706,
-     "max": 5.81706,
-     "seen": 1
-    },
-    "Range": {
-     "type": "num",
-     "min": 0.0,
-     "max": 0.0,
-     "seen": 1
-    }
-   }
-  },
-  "0679dea3-2588-4d9d-8d0d-ef3762f1f478": {
-   "kind": "efecto",
-   "internal_name": null,
-   "display_name": null,
-   "display_source": null,
-   "owned": null,
-   "categories": [
-    "Stomp"
-   ],
-   "uses": 42,
-   "example": {
-    "preset": "AmpliTube Collections/AmpliTube Electric Gypsy/6 or 9.at5p",
-    "container": "StompB1",
-    "slot": 0
-   },
-   "params": {
-    "Attack": {
-     "type": "num",
-     "min": 0.703125,
-     "max": 10.0,
-     "seen": 42
-    },
-    "Bypass": {
-     "type": "enum",
-     "values": [
-      "0",
-      "1"
-     ],
-     "seen": 42
-    },
-    "FullScreen": {
-     "type": "num",
-     "min": 0.0,
-     "max": 0.0,
-     "seen": 42
-    },
-    "Volume": {
-     "type": "num",
-     "min": 0.135754,
-     "max": 1.0,
-     "seen": 42
-    }
-   }
-  },
-  "0755ca4e-ebb0-4507-a4e5-b5412667f9b2": {
-   "kind": "efecto",
-   "internal_name": null,
-   "display_name": null,
-   "display_source": null,
-   "owned": null,
-   "categories": [
-    "RackMaster"
-   ],
-   "uses": 2,
-   "example": {
-    "preset": "AmpliTube 5 MAX/Double Track Rhythm.at5p",
-    "container": "RackMaster",
-    "slot": 3
-   },
-   "params": {
-    "Bypass": {
-     "type": "enum",
-     "values": [
-      "0",
-      "1"
-     ],
-     "seen": 2
-    },
-    "Color": {
-     "type": "num",
-     "min": 50.0,
-     "max": 50.0,
-     "seen": 2
-    },
-    "Decay": {
-     "type": "num",
-     "min": 12.0,
-     "max": 40.0,
-     "seen": 2
-    },
-    "Hpf": {
-     "type": "num",
-     "min": 0.0,
-     "max": 0.0,
-     "seen": 2
-    },
-    "Mix": {
-     "type": "num",
-     "min": 10.0,
-     "max": 12.0,
-     "seen": 2
-    },
-    "Modulation": {
-     "type": "num",
-     "min": 0.0,
-     "max": 0.0,
-     "seen": 2
-    },
-    "PreDelay": {
-     "type": "num",
-     "min": 0.0,
-     "max": 0.0,
-     "seen": 2
-    },
-    "Size": {
-     "type": "num",
-     "min": 2.0,
-     "max": 20.0,
-     "seen": 2
-    }
-   }
-  },
-  "09ac5b94-f238-4e4c-914e-ba7662f280d9": {
-   "kind": "efecto",
-   "internal_name": null,
-   "display_name": null,
-   "display_source": null,
-   "owned": null,
-   "categories": [
-    "Stomp"
-   ],
-   "uses": 32,
-   "example": {
-    "preset": "AmpliTube Collections/AmpliTube Electric Gypsy/Experienced.at5p",
-    "container": "StompB1",
-    "slot": 0
-   },
-   "params": {
-    "Bypass": {
-     "type": "enum",
-     "values": [
-      "0",
-      "1"
-     ],
-     "seen": 32
-    },
-    "FullScreen": {
-     "type": "num",
-     "min": 0.0,
-     "max": 0.0,
-     "seen": 32
-    },
-    "Fuzz": {
-     "type": "num",
-     "min": 1.40625,
-     "max": 10.0,
-     "seen": 32
-    },
-    "Volume": {
-     "type": "num",
-     "min": 0.308922,
-     "max": 1.0,
-     "seen": 32
-    }
-   }
-  },
-  "0f304b4d-65b9-4347-9f44-fcaa8509efaf": {
-   "kind": "efecto",
-   "internal_name": null,
-   "display_name": null,
-   "display_source": null,
-   "owned": null,
+   "display_name": "Delay",
+   "display_source": "Edgar 2026-09-18: cargó Claude/«Prueba licencias delays» y reportó nombre, posición y sin candado. Pedalera (StompA1.2), después del Noise Gate.",
+   "owned": true,
+   "owned_source": "confirmado por Edgar",
    "categories": [
     "LoopFx",
     "Rack",
-    "RackMaster"
+    "Stomp"
    ],
-   "uses": 8,
+   "uses": 38,
    "example": {
-    "preset": "AmpliTube 5 MAX/80s Session Clean.at5p",
+    "preset": "AmpliTube 5/Ping Pong.at5p",
     "container": "RackB",
     "slot": 0
    },
    "params": {
+    "BPMMeter": {
+     "type": "enum",
+     "values": [
+      "1/2",
+      "1/32",
+      "1/4",
+      "1/8"
+     ],
+     "seen": 38
+    },
+    "BPMSync": {
+     "type": "num",
+     "min": 0.0,
+     "max": 1.0,
+     "seen": 38
+    },
     "Bypass": {
      "type": "enum",
      "values": [
       "0",
       "1"
      ],
-     "seen": 8
+     "seen": 38
     },
-    "Detune": {
+    "Delay": {
      "type": "num",
-     "min": -7.0,
-     "max": 16.0,
-     "seen": 8
+     "min": 62.0,
+     "max": 1600.0,
+     "seen": 38
     },
     "Feedback": {
      "type": "num",
-     "min": 1.0,
-     "max": 4.94189,
-     "seen": 8
+     "min": 0.0,
+     "max": 60.3125,
+     "seen": 38
     },
-    "OutLevel": {
-     "type": "num",
-     "min": 1.00798,
-     "max": 1.57956,
-     "seen": 8
-    },
-    "Pitch": {
-     "type": "num",
-     "min": -12.0,
-     "max": 12.0,
-     "seen": 8
-    },
-    "PitchLevel": {
-     "type": "num",
-     "min": 1.80244,
-     "max": 10.0,
-     "seen": 8
-    },
-    "PreDelay": {
-     "type": "num",
-     "min": 1.0,
-     "max": 1.0,
-     "seen": 8
-    },
-    "Stereo": {
+    "FullScreen": {
      "type": "num",
      "min": 0.0,
-     "max": 1.0,
-     "seen": 8
+     "max": 0.0,
+     "seen": 2
+    },
+    "Level": {
+     "type": "num",
+     "min": 0.35875,
+     "max": 10.0,
+     "seen": 38
     }
    }
   },
   "1189979a-db5d-4dc1-9228-7bd974d8a8c5": {
    "kind": "efecto",
    "internal_name": null,
-   "display_name": null,
-   "display_source": null,
-   "owned": null,
+   "display_name": "Digital Delay",
+   "display_source": "Edgar 2026-09-18: cargó Claude/«Prueba licencias delays» y reportó nombre, posición y sin candado. FX Loop (LoopFxA.0), conectado a la cabecera del ampli.",
+   "owned": true,
+   "owned_source": "confirmado por Edgar",
    "categories": [
     "LoopFx",
     "Rack",
@@ -8309,12 +8038,528 @@
     }
    }
   },
+  "5aa37004-52de-4846-bb7b-1816d98562de": {
+   "kind": "efecto",
+   "internal_name": null,
+   "display_name": "Dime Noise Gate",
+   "display_source": "MidiAssignments de presets de fábrica (escrito por IK)",
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
+   "categories": [
+    "Stomp"
+   ],
+   "uses": 8,
+   "example": {
+    "preset": "AmpliTube Collections/AmpliTube Dimebag Darrell CFH/CFH Distortion.at5p",
+    "container": "StompA1",
+    "slot": 2
+   },
+   "params": {
+    "Bypass": {
+     "type": "enum",
+     "values": [
+      "0",
+      "1"
+     ],
+     "seen": 8
+    },
+    "Filter": {
+     "type": "num",
+     "min": 40.0,
+     "max": 905.268,
+     "seen": 8
+    },
+    "Release": {
+     "type": "num",
+     "min": 1.0,
+     "max": 1.0,
+     "seen": 8
+    },
+    "Threshold": {
+     "type": "num",
+     "min": 2.89063,
+     "max": 10.0,
+     "seen": 8
+    }
+   }
+  },
+  "5e65abef-82eb-4995-b911-d5eca4f8291e": {
+   "kind": "efecto",
+   "internal_name": null,
+   "display_name": "Diode Overdrive",
+   "display_source": "MidiAssignments de presets de fábrica (escrito por IK)",
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
+   "categories": [
+    "Stomp",
+    "StompStereo"
+   ],
+   "uses": 56,
+   "example": {
+    "preset": "AmpliTube 5/Ping Pong.at5p",
+    "container": "StompA1",
+    "slot": 4
+   },
+   "params": {
+    "Bypass": {
+     "type": "enum",
+     "values": [
+      "0",
+      "1"
+     ],
+     "seen": 56
+    },
+    "Drive": {
+     "type": "num",
+     "min": 0.0,
+     "max": 10.0,
+     "seen": 56
+    },
+    "Tone": {
+     "type": "num",
+     "min": 0.53125,
+     "max": 7.38086,
+     "seen": 56
+    },
+    "Volume": {
+     "type": "num",
+     "min": 0.0,
+     "max": 7.83466,
+     "seen": 56
+    }
+   }
+  },
+  "48e7b721-d57a-4c34-813b-95d8091d5eda": {
+   "kind": "efecto",
+   "internal_name": null,
+   "display_name": "EchoMan",
+   "display_source": "Edgar 2026-09-18: cargó Claude/«Prueba licencias delays» y reportó nombre, posición y sin candado. Rack (RackA.0), después de las cabinas.",
+   "owned": true,
+   "owned_source": "confirmado por Edgar",
+   "categories": [
+    "Rack"
+   ],
+   "uses": 3,
+   "example": {
+    "preset": "AmpliTube 5 MAX/Comfortably Gilmour Solo.at5p",
+    "container": "RackA",
+    "slot": 0
+   },
+   "params": {
+    "BPMMeter": {
+     "type": "enum",
+     "values": [
+      "1/4"
+     ],
+     "seen": 3
+    },
+    "BPMSync": {
+     "type": "num",
+     "min": 0.0,
+     "max": 0.0,
+     "seen": 3
+    },
+    "Blend": {
+     "type": "num",
+     "min": 9.99631,
+     "max": 24.2188,
+     "seen": 3
+    },
+    "Bypass": {
+     "type": "enum",
+     "values": [
+      "0",
+      "1"
+     ],
+     "seen": 3
+    },
+    "ChVib": {
+     "type": "num",
+     "min": 0.0,
+     "max": 0.0,
+     "seen": 3
+    },
+    "Delay": {
+     "type": "num",
+     "min": 220.0,
+     "max": 500.0,
+     "seen": 3
+    },
+    "Feedback": {
+     "type": "num",
+     "min": 0.0,
+     "max": 45.3125,
+     "seen": 3
+    },
+    "Mode": {
+     "type": "enum",
+     "values": [
+      "Chorus"
+     ],
+     "seen": 3
+    }
+   }
+  },
+  "02643125-de84-4c94-b214-4d300652332b": {
+   "kind": "efecto",
+   "internal_name": null,
+   "display_name": null,
+   "display_source": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
+   "categories": [
+    "Rack"
+   ],
+   "uses": 1,
+   "example": {
+    "preset": "AmpliTube Collections/AmpliTube Brian May/Bijou.at5p",
+    "container": "RackA",
+    "slot": 1
+   },
+   "params": {
+    "Bypass": {
+     "type": "enum",
+     "values": [
+      "0",
+      "1"
+     ],
+     "seen": 1
+    },
+    "Chorus": {
+     "type": "num",
+     "min": 13.0,
+     "max": 13.0,
+     "seen": 1
+    },
+    "Mode": {
+     "type": "enum",
+     "values": [
+      "Vibrato"
+     ],
+     "seen": 1
+    },
+    "OutLevel": {
+     "type": "num",
+     "min": 1.0,
+     "max": 1.0,
+     "seen": 1
+    },
+    "StereoMode": {
+     "type": "enum",
+     "values": [
+      "Stereo"
+     ],
+     "seen": 1
+    },
+    "VibDepth": {
+     "type": "num",
+     "min": 0.0,
+     "max": 0.0,
+     "seen": 1
+    },
+    "VibRate": {
+     "type": "num",
+     "min": 0.1,
+     "max": 0.1,
+     "seen": 1
+    }
+   }
+  },
+  "0332d916-2ab2-4b7d-98c4-73a80a42b3b1": {
+   "kind": "efecto",
+   "internal_name": null,
+   "display_name": null,
+   "display_source": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
+   "categories": [
+    "RackDI"
+   ],
+   "uses": 1,
+   "example": {
+    "preset": "AmpliTube 5 MAX/Double Funk.at5p",
+    "container": "RackDI",
+    "slot": 0
+   },
+   "params": {
+    "Bypass": {
+     "type": "enum",
+     "values": [
+      "0",
+      "1"
+     ],
+     "seen": 1
+    },
+    "Drive": {
+     "type": "num",
+     "min": 0.0,
+     "max": 0.0,
+     "seen": 1
+    },
+    "FilterMode": {
+     "type": "enum",
+     "values": [
+      "HP"
+     ],
+     "seen": 1
+    },
+    "Gain": {
+     "type": "num",
+     "min": 5.98533,
+     "max": 5.98533,
+     "seen": 1
+    },
+    "Peak": {
+     "type": "num",
+     "min": 5.81706,
+     "max": 5.81706,
+     "seen": 1
+    },
+    "Range": {
+     "type": "num",
+     "min": 0.0,
+     "max": 0.0,
+     "seen": 1
+    }
+   }
+  },
+  "0679dea3-2588-4d9d-8d0d-ef3762f1f478": {
+   "kind": "efecto",
+   "internal_name": null,
+   "display_name": null,
+   "display_source": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
+   "categories": [
+    "Stomp"
+   ],
+   "uses": 42,
+   "example": {
+    "preset": "AmpliTube Collections/AmpliTube Electric Gypsy/6 or 9.at5p",
+    "container": "StompB1",
+    "slot": 0
+   },
+   "params": {
+    "Attack": {
+     "type": "num",
+     "min": 0.703125,
+     "max": 10.0,
+     "seen": 42
+    },
+    "Bypass": {
+     "type": "enum",
+     "values": [
+      "0",
+      "1"
+     ],
+     "seen": 42
+    },
+    "FullScreen": {
+     "type": "num",
+     "min": 0.0,
+     "max": 0.0,
+     "seen": 42
+    },
+    "Volume": {
+     "type": "num",
+     "min": 0.135754,
+     "max": 1.0,
+     "seen": 42
+    }
+   }
+  },
+  "0755ca4e-ebb0-4507-a4e5-b5412667f9b2": {
+   "kind": "efecto",
+   "internal_name": null,
+   "display_name": null,
+   "display_source": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
+   "categories": [
+    "RackMaster"
+   ],
+   "uses": 2,
+   "example": {
+    "preset": "AmpliTube 5 MAX/Double Track Rhythm.at5p",
+    "container": "RackMaster",
+    "slot": 3
+   },
+   "params": {
+    "Bypass": {
+     "type": "enum",
+     "values": [
+      "0",
+      "1"
+     ],
+     "seen": 2
+    },
+    "Color": {
+     "type": "num",
+     "min": 50.0,
+     "max": 50.0,
+     "seen": 2
+    },
+    "Decay": {
+     "type": "num",
+     "min": 12.0,
+     "max": 40.0,
+     "seen": 2
+    },
+    "Hpf": {
+     "type": "num",
+     "min": 0.0,
+     "max": 0.0,
+     "seen": 2
+    },
+    "Mix": {
+     "type": "num",
+     "min": 10.0,
+     "max": 12.0,
+     "seen": 2
+    },
+    "Modulation": {
+     "type": "num",
+     "min": 0.0,
+     "max": 0.0,
+     "seen": 2
+    },
+    "PreDelay": {
+     "type": "num",
+     "min": 0.0,
+     "max": 0.0,
+     "seen": 2
+    },
+    "Size": {
+     "type": "num",
+     "min": 2.0,
+     "max": 20.0,
+     "seen": 2
+    }
+   }
+  },
+  "09ac5b94-f238-4e4c-914e-ba7662f280d9": {
+   "kind": "efecto",
+   "internal_name": null,
+   "display_name": null,
+   "display_source": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
+   "categories": [
+    "Stomp"
+   ],
+   "uses": 32,
+   "example": {
+    "preset": "AmpliTube Collections/AmpliTube Electric Gypsy/Experienced.at5p",
+    "container": "StompB1",
+    "slot": 0
+   },
+   "params": {
+    "Bypass": {
+     "type": "enum",
+     "values": [
+      "0",
+      "1"
+     ],
+     "seen": 32
+    },
+    "FullScreen": {
+     "type": "num",
+     "min": 0.0,
+     "max": 0.0,
+     "seen": 32
+    },
+    "Fuzz": {
+     "type": "num",
+     "min": 1.40625,
+     "max": 10.0,
+     "seen": 32
+    },
+    "Volume": {
+     "type": "num",
+     "min": 0.308922,
+     "max": 1.0,
+     "seen": 32
+    }
+   }
+  },
+  "0f304b4d-65b9-4347-9f44-fcaa8509efaf": {
+   "kind": "efecto",
+   "internal_name": null,
+   "display_name": null,
+   "display_source": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
+   "categories": [
+    "LoopFx",
+    "Rack",
+    "RackMaster"
+   ],
+   "uses": 8,
+   "example": {
+    "preset": "AmpliTube 5 MAX/80s Session Clean.at5p",
+    "container": "RackB",
+    "slot": 0
+   },
+   "params": {
+    "Bypass": {
+     "type": "enum",
+     "values": [
+      "0",
+      "1"
+     ],
+     "seen": 8
+    },
+    "Detune": {
+     "type": "num",
+     "min": -7.0,
+     "max": 16.0,
+     "seen": 8
+    },
+    "Feedback": {
+     "type": "num",
+     "min": 1.0,
+     "max": 4.94189,
+     "seen": 8
+    },
+    "OutLevel": {
+     "type": "num",
+     "min": 1.00798,
+     "max": 1.57956,
+     "seen": 8
+    },
+    "Pitch": {
+     "type": "num",
+     "min": -12.0,
+     "max": 12.0,
+     "seen": 8
+    },
+    "PitchLevel": {
+     "type": "num",
+     "min": 1.80244,
+     "max": 10.0,
+     "seen": 8
+    },
+    "PreDelay": {
+     "type": "num",
+     "min": 1.0,
+     "max": 1.0,
+     "seen": 8
+    },
+    "Stereo": {
+     "type": "num",
+     "min": 0.0,
+     "max": 1.0,
+     "seen": 8
+    }
+   }
+  },
   "14fd2d3b-a81d-4850-a2a6-9e94b7351059": {
    "kind": "efecto",
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Rack",
@@ -8384,7 +8629,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Rack",
@@ -8456,7 +8702,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -8514,7 +8761,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Stomp"
@@ -8577,7 +8825,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -8628,7 +8877,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -8690,7 +8940,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -8728,7 +8979,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Rack",
@@ -8821,7 +9073,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "RackDI",
     "Stomp",
@@ -8867,7 +9120,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -8899,7 +9153,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Stomp"
@@ -8993,7 +9248,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Rack",
@@ -9053,7 +9309,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -9109,7 +9366,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Rack"
@@ -9166,7 +9424,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -9233,82 +9492,13 @@
     }
    }
   },
-  "48e7b721-d57a-4c34-813b-95d8091d5eda": {
-   "kind": "efecto",
-   "internal_name": null,
-   "display_name": null,
-   "display_source": null,
-   "owned": null,
-   "categories": [
-    "Rack"
-   ],
-   "uses": 3,
-   "example": {
-    "preset": "AmpliTube 5 MAX/Comfortably Gilmour Solo.at5p",
-    "container": "RackA",
-    "slot": 0
-   },
-   "params": {
-    "BPMMeter": {
-     "type": "enum",
-     "values": [
-      "1/4"
-     ],
-     "seen": 3
-    },
-    "BPMSync": {
-     "type": "num",
-     "min": 0.0,
-     "max": 0.0,
-     "seen": 3
-    },
-    "Blend": {
-     "type": "num",
-     "min": 9.99631,
-     "max": 24.2188,
-     "seen": 3
-    },
-    "Bypass": {
-     "type": "enum",
-     "values": [
-      "0",
-      "1"
-     ],
-     "seen": 3
-    },
-    "ChVib": {
-     "type": "num",
-     "min": 0.0,
-     "max": 0.0,
-     "seen": 3
-    },
-    "Delay": {
-     "type": "num",
-     "min": 220.0,
-     "max": 500.0,
-     "seen": 3
-    },
-    "Feedback": {
-     "type": "num",
-     "min": 0.0,
-     "max": 45.3125,
-     "seen": 3
-    },
-    "Mode": {
-     "type": "enum",
-     "values": [
-      "Chorus"
-     ],
-     "seen": 3
-    }
-   }
-  },
   "4e4d82f9-224a-4ffb-9994-97ef8285c315": {
    "kind": "efecto",
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -9358,7 +9548,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -9416,7 +9607,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -9460,7 +9652,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "RackMaster"
    ],
@@ -9552,7 +9745,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Rack",
     "RackMaster"
@@ -9621,7 +9815,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp",
     "StompStereo"
@@ -9666,7 +9861,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Rack",
@@ -9730,7 +9926,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -9798,7 +9995,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Rack",
     "Stomp"
@@ -9857,7 +10055,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -9956,7 +10155,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -9996,7 +10196,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -10040,7 +10241,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -10084,7 +10286,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "RackMaster"
    ],
@@ -10152,7 +10355,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -10196,7 +10400,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Rack",
     "RackMaster"
@@ -10247,7 +10452,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "RackDI"
    ],
@@ -10323,7 +10529,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Rack"
    ],
@@ -10368,7 +10575,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Rack"
    ],
@@ -10436,7 +10644,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp",
     "StompStereo"
@@ -10475,7 +10684,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -10513,7 +10723,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Rack",
@@ -10585,7 +10796,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -10641,7 +10853,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -10697,7 +10910,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "RackMaster"
    ],
@@ -10765,7 +10979,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -10803,7 +11018,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -10867,7 +11083,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -10929,7 +11146,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx"
    ],
@@ -11010,7 +11228,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -11054,7 +11273,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Rack",
@@ -11121,7 +11341,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "RackMaster"
    ],
@@ -11183,7 +11404,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -11227,7 +11449,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -11296,7 +11519,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Rack",
     "RackMaster"
@@ -11359,7 +11583,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -11397,7 +11622,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -11441,7 +11667,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "RackDI",
     "Stomp"
@@ -11498,7 +11725,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Rack",
@@ -11601,7 +11829,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -11639,7 +11868,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -11701,7 +11931,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Rack",
     "Stomp"
@@ -11760,7 +11991,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx"
    ],
@@ -11804,7 +12036,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Rack",
@@ -11887,7 +12120,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -11931,7 +12165,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "RackMaster"
@@ -11976,7 +12211,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Rack",
@@ -12028,7 +12264,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -12072,7 +12309,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Rack",
@@ -12148,7 +12386,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Rack",
@@ -12249,7 +12488,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Rack",
@@ -12490,7 +12730,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -12560,7 +12801,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp",
     "StompStereo"
@@ -12653,7 +12895,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -12699,7 +12942,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -12749,7 +12993,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Rack"
@@ -12835,7 +13080,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -12891,7 +13137,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Rack",
@@ -12970,7 +13217,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "LoopFx",
     "Rack",
@@ -13034,7 +13282,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "RackDI"
    ],
@@ -13096,7 +13345,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Rack",
     "Stomp",
@@ -13151,7 +13401,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Rack"
    ],
@@ -13197,80 +13448,13 @@
     }
    }
   },
-  "e11b1dc5-1f7d-42ad-af30-0539b3646b3c": {
-   "kind": "efecto",
-   "internal_name": null,
-   "display_name": null,
-   "display_source": null,
-   "owned": null,
-   "categories": [
-    "LoopFx",
-    "Rack",
-    "Stomp"
-   ],
-   "uses": 38,
-   "example": {
-    "preset": "AmpliTube 5/Ping Pong.at5p",
-    "container": "RackB",
-    "slot": 0
-   },
-   "params": {
-    "BPMMeter": {
-     "type": "enum",
-     "values": [
-      "1/2",
-      "1/32",
-      "1/4",
-      "1/8"
-     ],
-     "seen": 38
-    },
-    "BPMSync": {
-     "type": "num",
-     "min": 0.0,
-     "max": 1.0,
-     "seen": 38
-    },
-    "Bypass": {
-     "type": "enum",
-     "values": [
-      "0",
-      "1"
-     ],
-     "seen": 38
-    },
-    "Delay": {
-     "type": "num",
-     "min": 62.0,
-     "max": 1600.0,
-     "seen": 38
-    },
-    "Feedback": {
-     "type": "num",
-     "min": 0.0,
-     "max": 60.3125,
-     "seen": 38
-    },
-    "FullScreen": {
-     "type": "num",
-     "min": 0.0,
-     "max": 0.0,
-     "seen": 2
-    },
-    "Level": {
-     "type": "num",
-     "min": 0.35875,
-     "max": 10.0,
-     "seen": 38
-    }
-   }
-  },
   "ecc79add-83b7-46ae-896a-3f1c02ece992": {
    "kind": "efecto",
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -13326,7 +13510,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -13383,7 +13568,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp",
     "StompStereo"
@@ -13428,7 +13614,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -13466,7 +13653,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -13510,7 +13698,8 @@
    "internal_name": null,
    "display_name": null,
    "display_source": null,
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "RackMaster"
    ],
@@ -13542,7 +13731,8 @@
    "internal_name": null,
    "display_name": "FOX Phaser",
    "display_source": "MidiAssignments de presets de fábrica (escrito por IK)",
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -13592,7 +13782,8 @@
    "internal_name": null,
    "display_name": "May Wah",
    "display_source": "MidiAssignments de presets de fábrica (escrito por IK)",
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -13631,7 +13822,8 @@
    "internal_name": null,
    "display_name": "Noise Gate",
    "display_source": "MidiAssignments de presets de fábrica (escrito por IK)",
-   "owned": null,
+   "owned": true,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -13681,7 +13873,8 @@
    "internal_name": null,
    "display_name": "OCD",
    "display_source": "MidiAssignments de presets de fábrica (escrito por IK)",
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -13731,7 +13924,8 @@
    "internal_name": null,
    "display_name": "Pre EQ 3",
    "display_source": "MidiAssignments de presets de fábrica (escrito por IK)",
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -13825,7 +14019,8 @@
    "internal_name": null,
    "display_name": "Red Special",
    "display_source": "MidiAssignments de presets de fábrica (escrito por IK)",
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -13912,7 +14107,8 @@
    "internal_name": null,
    "display_name": "Star Gate",
    "display_source": "MidiAssignments de presets de fábrica (escrito por IK)",
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -13956,7 +14152,8 @@
    "internal_name": null,
    "display_name": "Treble Booster",
    "display_source": "MidiAssignments de presets de fábrica (escrito por IK)",
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
@@ -13994,7 +14191,8 @@
    "internal_name": null,
    "display_name": "VariDiode+",
    "display_source": "MidiAssignments de presets de fábrica (escrito por IK)",
-   "owned": null,
+   "owned": false,
+   "owned_source": "plist de licencias de AmpliTube",
    "categories": [
     "Stomp"
    ],
