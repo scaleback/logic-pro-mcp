@@ -14,6 +14,7 @@ private final class PresetFixture: @unchecked Sendable {
     let runtime: AXLogicProElements.Runtime
     let popup: AXUIElement
     let pressedLeaves = MutableBox<[String]>([])
+    let activations = MutableBox<Int>(0)
 
     static let trackName = "Audio 1"
 
@@ -25,7 +26,8 @@ private final class PresetFixture: @unchecked Sendable {
         leafIsFolder: Bool = false,
         mixerRebuildsOnLoad: Bool = false,
         appleMenuInMenuBar: Bool = false,
-        sideChainPopupFirst: Bool = false
+        sideChainPopupFirst: Bool = false,
+        logicInactive: Bool = false               // plugin panels stay hidden until Logic is activated
     ) {
         let b = self.b
         let app = b.element(1)
@@ -144,6 +146,7 @@ private final class PresetFixture: @unchecked Sendable {
                     sideChain: b.elementID(sideChain), claude: b.elementID(claudeFolder),
                     leaves: leaves.map { b.elementID($0) })
         let pressed = pressedLeaves
+        let activations = self.activations
         self.popup = setting
         self.runtime = b.makeLogicRuntime(
             appElement: app,
@@ -158,6 +161,7 @@ private final class PresetFixture: @unchecked Sendable {
                     return true
                 }
                 if key == keys.slot || key == keys.open {
+                    if logicInactive, activations.value == 0 { return false }
                     b.setAttribute(pluginWindow, kAXMainAttribute as String, true)
                     b.setAttribute(pluginWindow, kAXFocusedAttribute as String, true)
                     return false                         // real 12.3: opens, reports non-zero
@@ -203,6 +207,7 @@ private final class PresetFixture: @unchecked Sendable {
             params: ["track": "0", "insert": "0", "plugin": plugin, "preset_path": json],
             runtime: runtime,
             frontDocumentPath: { "/tmp/Prueba.logicx" },
+            activateLogic: { [activations] in activations.value += 1; return true },
             settleMs: 1
         )
     }
@@ -311,6 +316,18 @@ struct PluginLoadPresetTests {
         #expect(obj["error"] as? String == "target_plugin_mismatch")
         #expect(obj["write_attempted"] as? Bool == false)
         #expect(f.pressedLeaves.value.isEmpty)
+        #expect(f.activations.value == 0)          // a refusal never pulls Logic to the front
+    }
+
+    @Test("Logic in the background is activated before the insert is pressed")
+    func inactiveLogicIsActivatedFirst() async {
+        // Live 2026-09-18: System Settings was front, the press raised no plugin
+        // window, and the op ended State C window_open_failed.
+        let f = PresetFixture(logicInactive: true)
+        let obj = body(await f.run(["Claude", "Prueba"]))
+        #expect(obj["state"] as? String == "A")
+        #expect(f.activations.value == 1)
+        #expect(f.pressedLeaves.value == ["Prueba"])
     }
 
     @Test("plugin names match case-insensitively; paths decode from JSON only")

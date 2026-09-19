@@ -27,6 +27,7 @@ extension AccessibilityChannel {
         params: [String: String],
         runtime: AXLogicProElements.Runtime = .production,
         frontDocumentPath: FrontDocumentPathProvider = liveFrontDocumentPath,
+        activateLogic: @Sendable () -> Bool = { ProcessUtils.activateLogicPro() },
         settleMs: Int = 250
     ) async -> ChannelResult {
         let operation = "logic_plugins.load_preset"
@@ -136,11 +137,21 @@ extension AccessibilityChannel {
             return .error(windowOpenFailedStateC(operation, identity, "the target track name could not be resolved for window matching"))
         }
         identity["track_name"] = trackName
+        // Logic's plugin windows are floating panels that hide while Logic is
+        // not the active app. Live 2026-09-18: with System Settings in front,
+        // pressing the insert raised nothing (0 windows titled the track);
+        // with Logic in front, the same call reached State A. Every check
+        // above is read-only, so this is the first thing that moves the UI.
+        let activated = activateLogic()
+        try? await Task.sleep(nanoseconds: UInt64(max(settleMs, 0)) * 1_000_000)
         guard let window = await acquirePluginWindowBySlot(slots[insert].element, trackName: trackName, runtime: runtime) else {
             return .error(windowOpenFailedStateC(
                 operation, identity,
                 "no plugin window titled '\(trackName)' came to the front after pressing insert \(insert)",
-                diagnostics: ["plugin_windows_titled_track": pluginEditorWindows(titled: trackName, runtime: runtime).count]
+                diagnostics: [
+                    "plugin_windows_titled_track": pluginEditorWindows(titled: trackName, runtime: runtime).count,
+                    "logic_activated": activated,
+                ]
             ))
         }
 
