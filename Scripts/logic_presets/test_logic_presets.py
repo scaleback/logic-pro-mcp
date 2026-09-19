@@ -43,6 +43,7 @@ class Fixture:
         (folder / f"{name}.pst").write_bytes(blob)
 
     def clone(self, plugin, name="Nuevo", sets=(), **kw):
+        kw.setdefault("factory_root", None)          # hermetic: never the real Logic app
         return lp.clone(self.root, plugin, "Base", name, list(sets), **kw)
 
     def cleanup(self):
@@ -142,6 +143,19 @@ class CloneTests(unittest.TestCase):
     def test_non_numeric_value_is_refused(self):
         with self.assertRaises(lp.PresetError):
             self.f.clone("ChromaVerb", sets=["decay=largo"])
+
+    def test_a_factory_preset_is_a_valid_base_and_the_clone_lands_in_claude(self):
+        factory = self.f.dir / "Factory"
+        (factory / "ChromaVerb" / "Chambers").mkdir(parents=True)
+        values = [0.0] * 81
+        values[6] = 2.5
+        (factory / "ChromaVerb" / "Chambers" / "Guitar Chamber.pst").write_bytes(pst(287, values))
+        for ref in ("Guitar Chamber", "Chambers/Guitar Chamber"):
+            out, changes, _ = lp.clone(self.f.root, "ChromaVerb", ref, f"Larga {len(ref)}",
+                                       ["decay=4"], factory_root=factory)
+            self.assertEqual(out.parent, self.f.root / "ChromaVerb" / "Claude")
+            self.assertEqual(changes, [("decay", 6, 2.5, 4.0)])
+        self.assertEqual(len(list((factory / "ChromaVerb").rglob("*.pst"))), 1)   # factory untouched
 
     def test_dry_run_writes_nothing(self):
         out, changes, _ = self.f.clone("ChromaVerb", sets=["decay=3.5"], dry_run=True)

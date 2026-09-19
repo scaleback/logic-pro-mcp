@@ -39,6 +39,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 MAPS_DIR = HERE / "mapas"
 DEFAULT_ROOT = Path.home() / "Music" / "Audio Music Apps" / "Plug-In Settings"
+# Logic's own presets (read-only source: a clone of one still lands in Claude/).
+FACTORY_ROOT = Path("/Applications/Logic Pro.app/Contents/Resources/Plug-In Settings")
 CLAUDE_DIR = "Claude"
 MAGIC = b"GAMETSPP"
 HEADER = 24
@@ -88,17 +90,32 @@ def load_map(plugin: str) -> dict:
     raise PresetError(f"No hay mapa para «{plugin}». Mapeados: {known}.")
 
 
-def resolve_preset(root: Path, plugin_map: dict, ref: str) -> Path:
+def resolve_preset(root: Path, plugin_map: dict, ref: str, factory_root: Path | None = FACTORY_ROOT) -> Path:
+    """A preset by path, or by name in the user's folder and then Logic's factory set.
+
+    A name may also carry its menu folder ("Chambers/Guitar Chamber"), which is
+    how scan_plugin_presets and load_preset spell it.
+    """
     candidate = Path(ref).expanduser()
     if candidate.is_file():
         return candidate
-    folder = root / plugin_map["plugin"]
-    hits = [p for p in folder.rglob("*.pst") if p.stem.lower() == ref.lower() or p.name == ref]
+    folders = [root / plugin_map["plugin"]]
+    if factory_root is not None:
+        folders.append(factory_root / plugin_map["plugin"])
+    wanted = ref.lower().removesuffix(".pst")
+    hits = []
+    for folder in folders:
+        if not folder.is_dir():
+            continue
+        for p in folder.rglob("*.pst"):
+            rel = str(p.relative_to(folder).with_suffix("")).lower()
+            if p.stem.lower() == wanted or rel == wanted:
+                hits.append(p)
     if len(hits) == 1:
         return hits[0]
     if not hits:
-        raise PresetError(f"No encontré «{ref}» en {folder}.")
-    listing = "\n  ".join(str(p.relative_to(folder)) for p in hits)
+        raise PresetError(f"No encontré «{ref}» en: " + ", ".join(str(f) for f in folders) + ".")
+    listing = "\n  ".join(str(p) for p in hits)
     raise PresetError(f"Hay {len(hits)} presets «{ref}»; da la ruta:\n  {listing}")
 
 
@@ -146,11 +163,12 @@ def resolve_value(name: str, spec: dict, raw: str) -> tuple[float, str | None]:
 
 
 def clone(root: Path, plugin: str, base_ref: str, name: str,
-          sets: list[str] = (), dry_run: bool = False) -> tuple[Path, list, list[str]]:
+          sets: list[str] = (), dry_run: bool = False,
+          factory_root: Path | None = FACTORY_ROOT) -> tuple[Path, list, list[str]]:
     if not name or "/" in name or name.startswith("."):
         raise PresetError(f"Nombre «{name}» inválido.")
     plugin_map = load_map(plugin)
-    base_path = resolve_preset(root, plugin_map, base_ref)
+    base_path = resolve_preset(root, plugin_map, base_ref, factory_root)
     base = read_checked(base_path, plugin_map)
     preset = dict(base, values=list(base["values"]))
     changes, warnings = [], []
