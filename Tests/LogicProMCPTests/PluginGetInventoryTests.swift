@@ -500,10 +500,13 @@ func testGetInventoryStateAImpliesNonEmptyPlugins(_ slotCount: Int) async {
     let plugins = obj["plugins"] as! [[String: Any]]
     #expect(plugins.count == 2)
     #expect(plugins.map { $0["insert"] as! Int } == [0, 1])
-    #expect(plugins[0]["read_status"] as? String == "empty")
-    #expect(plugins[1]["read_status"] as? String == "ok")
-    #expect(plugins[1]["name"] as? String == "Gain")
-    #expect(plugins[1]["plugin_id"] as? String == "logic.stock.effect.gain")
+    // Logic's numbering, top of the strip first: Gain (y 559) is above the
+    // empty row (y 585) on screen, though the live dump lists it second
+    // (2026-09-19; this used to assert the inverse).
+    #expect(plugins[0]["read_status"] as? String == "ok")
+    #expect(plugins[0]["name"] as? String == "Gain")
+    #expect(plugins[0]["plugin_id"] as? String == "logic.stock.effect.gain")
+    #expect(plugins[1]["read_status"] as? String == "empty")
 }
 
 @Test func testGetInventoryToolbarSelectedFlowsToStateB() async {

@@ -166,3 +166,52 @@ private func addFramedButton(
 
     #expect(slots.isEmpty)
 }
+
+// MARK: - Logic's slot numbering: top of the strip = insert 0
+
+private func place(_ builder: FakeAXRuntimeBuilder, _ el: AXUIElement, y: CGFloat) -> AXUIElement {
+    builder.setAttribute(el, kAXPositionAttribute as String, axPoint(33, y))
+    return el
+}
+
+@Test func testSlotsAreNumberedTopFirstEvenWhenAccessibilityListsThemBottomFirst() {
+    // Live 2026-09-19, "Audio 1": Logic shows Compressor, AmpliTube, ChromaVerb,
+    // Channel EQ top to bottom; AX listed them bottom-first (y 469, 455, 442,
+    // 429) and get_inventory called the Compressor insert 3.
+    let b = FakeAXRuntimeBuilder()
+    let strip = b.element(700)
+    b.setChildren(strip, [
+        place(b, addOccupiedSlot(b, 701, name: "Channel EQ"), y: 469),
+        place(b, addOccupiedSlot(b, 702, name: "ChromaVerb"), y: 455),
+        place(b, addOccupiedSlot(b, 703, name: "AmpliTube"), y: 442),
+        place(b, addOccupiedSlot(b, 704, name: "Compressor"), y: 429),
+    ])
+    let slots = AXLogicProElements.audioPluginInsertSlots(in: strip, runtime: b.makeAXRuntime())
+    #expect(slots.map(\.name) == ["Compressor", "AmpliTube", "ChromaVerb", "Channel EQ"])
+    #expect(slots.map(\.index) == [0, 1, 2, 3])
+}
+
+@Test func testTheEmptySlotBelowThePluginsComesLast() {
+    let b = FakeAXRuntimeBuilder()
+    let strip = b.element(710)
+    b.setChildren(strip, [
+        place(b, addEmptySlot(b, 711), y: 482),
+        place(b, addOccupiedSlot(b, 712, name: "Channel EQ"), y: 469),
+        place(b, addOccupiedSlot(b, 713, name: "Compressor"), y: 429),
+    ])
+    let slots = AXLogicProElements.audioPluginInsertSlots(in: strip, runtime: b.makeAXRuntime())
+    #expect(slots.map(\.name) == ["Compressor", "Channel EQ", nil])
+    #expect(isTrueFact(slots.last?.isEmpty))
+    #expect(slots.map(\.index) == [0, 1, 2])
+}
+
+@Test func testUnreadablePositionsKeepAccessibilityOrderRatherThanGuess() {
+    let b = FakeAXRuntimeBuilder()
+    let strip = b.element(720)
+    b.setChildren(strip, [
+        place(b, addOccupiedSlot(b, 721, name: "Channel EQ"), y: 469),
+        addOccupiedSlot(b, 722, name: "Compressor"),          // no position
+    ])
+    let slots = AXLogicProElements.audioPluginInsertSlots(in: strip, runtime: b.makeAXRuntime())
+    #expect(slots.map(\.name) == ["Channel EQ", "Compressor"])
+}

@@ -78,13 +78,17 @@ struct Mixer123SelectionTests {
 
         #expect(slots.count == 2)
         #expect(slots.map(\.index) == [0, 1])
+        // The live dump lists the strip bottom-first (name field y 1029 …
+        // Setting button y 464). On screen Gain (y 559) sits ABOVE the empty
+        // slot (y 585), so in Logic's numbering Gain is insert 0 and the empty
+        // slot insert 1 (2026-09-19; this test used to assert the inverse).
         let firstSlot = try #require(slots.first)
         let secondSlot = try #require(slots.dropFirst().first)
-        #expect(firstSlot.readStatus == .empty)
-        #expect(firstSlot.name == nil)
-        #expect(secondSlot.readStatus == .occupiedReadable)
-        #expect(secondSlot.name == "Gain")
-        let bypassed = secondSlot.isBypassed!
+        #expect(firstSlot.readStatus == .occupiedReadable)
+        #expect(firstSlot.name == "Gain")
+        let bypassed = try #require(firstSlot.isBypassed)
         #expect(!bypassed)
+        #expect(secondSlot.readStatus == .empty)
+        #expect(secondSlot.name == nil)
     }
 }

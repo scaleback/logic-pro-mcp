@@ -87,7 +87,34 @@ extension AXLogicProElements {
             }
             // else: not an insert slot — skip without consuming an index.
         }
-        return slots
+        return inLogicSlotOrder(slots, runtime: runtime)
+    }
+
+    /// Number the slots the way Logic does: slot 1 at the TOP of the strip.
+    ///
+    /// Measured live 2026-09-19 (Logic 12.3.1, "Audio 1" with Compressor,
+    /// AmpliTube, ChromaVerb, Channel EQ top to bottom): Accessibility lists a
+    /// strip's children BOTTOM-first — the inspector's four "open" buttons came
+    /// back at y = 469, 455, 442, 429 — so the AX order made insert 0 the
+    /// bottom plugin and the tool's numbers were Logic's in reverse. Ordering by
+    /// on-screen position fixes the numbering whatever order AX uses. If any
+    /// slot's position is unreadable, AX order is kept rather than guessed.
+    static func inLogicSlotOrder(_ slots: [PluginInsertSlot], runtime: AXHelpers.Runtime) -> [PluginInsertSlot] {
+        let tops = slots.map { AXHelpers.getPosition($0.element, runtime: runtime)?.y }
+        guard slots.count > 1, !tops.contains(where: { $0 == nil }) else { return slots }
+        return zip(slots, tops).enumerated()
+            .sorted { lhs, rhs in
+                let (ly, ry) = (lhs.element.1!, rhs.element.1!)
+                return ly != ry ? ly < ry : lhs.offset < rhs.offset
+            }
+            .enumerated()
+            .map { position, entry in
+                let slot = entry.element.0
+                return PluginInsertSlot(
+                    index: position, element: slot.element, name: slot.name,
+                    isBypassed: slot.isBypassed, readStatus: slot.readStatus
+                )
+            }
     }
 
     // internal (not private): called cross-file from the +Mixer extension (WS3 AC1 split).
