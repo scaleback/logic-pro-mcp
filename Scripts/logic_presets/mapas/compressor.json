@@ -2,23 +2,106 @@
  "plugin": "Compressor",
  "plugin_id": 154,
  "param_count": 31,
- "censo": "2026-09-18 con Edgar: CensoComp-base (Recall Default) → CensoComp-valores → CensoComp-valores2",
+ "censo": "2026-09-18 con Edgar: CensoComp-base (Recall Default) → CensoComp-valores → CensoComp-valores2 (valores2 re-guardado con Output Gain)",
  "params": {
-  "threshold":         {"index": 1,  "unit": "dB",  "evidence": "censo", "nota": "-20 → -23"},
-  "ratio":             {"index": 2,  "unit": ":1",  "evidence": "censo", "nota": "2.1 → 3.7"},
-  "attack":            {"index": 3,  "unit": "ms",  "evidence": "censo", "nota": "15 → 17"},
-  "release":           {"index": 4,  "unit": "ms",  "evidence": "censo", "nota": "51 → 230 (Logic ajustó 234 a 230)"},
-  "makeup":            {"index": 5,  "unit": "dB",  "evidence": "censo", "nota": "0 → 4.5"},
-  "knee":              {"index": 6,  "unit": "",    "evidence": "censo", "nota": "0.7 → 0.4 (Logic ajustó 0.37 a 0.4)"},
-  "circuito":          {"index": 10, "unit": "enum", "evidence": "censo", "nota": "Platinum Digital 0 → Vintage Opto 6",
-                        "values": {"Platinum Digital": [0, "censo"], "Studio VCA": [1, "orden_pantalla"],
-                                   "Studio FET": [2, "orden_pantalla"], "Classic VCA": [3, "orden_pantalla"],
-                                   "Vintage VCA": [4, "orden_pantalla"], "Vintage FET": [5, "orden_pantalla"],
-                                   "Vintage Opto": [6, "censo"]}},
-  "limiter_threshold": {"index": 12, "unit": "dB",  "evidence": "censo", "nota": "0 → -3.3"},
-  "mix":               {"index": 25, "unit": "%",   "evidence": "censo", "nota": "100 → 61"},
-  "input_gain":        {"index": 27, "unit": "dB",  "evidence": "censo", "nota": "0 → -7.5"}
+  "threshold": {
+   "index": 1,
+   "unit": "dB",
+   "evidence": "censo",
+   "nota": "-20 → -23"
+  },
+  "ratio": {
+   "index": 2,
+   "unit": ":1",
+   "evidence": "censo",
+   "nota": "2.1 → 3.7"
+  },
+  "attack": {
+   "index": 3,
+   "unit": "ms",
+   "evidence": "censo",
+   "nota": "15 → 17"
+  },
+  "release": {
+   "index": 4,
+   "unit": "ms",
+   "evidence": "censo",
+   "nota": "51 → 230 (Logic ajustó 234 a 230)"
+  },
+  "makeup": {
+   "index": 5,
+   "unit": "dB",
+   "evidence": "censo",
+   "nota": "0 → 4.5"
+  },
+  "knee": {
+   "index": 6,
+   "unit": "",
+   "evidence": "censo",
+   "nota": "0.7 → 0.4 (Logic ajustó 0.37 a 0.4)"
+  },
+  "circuito": {
+   "index": 10,
+   "unit": "enum",
+   "evidence": "censo",
+   "nota": "Platinum Digital 0 → Vintage Opto 6",
+   "values": {
+    "Platinum Digital": [
+     0,
+     "censo"
+    ],
+    "Studio VCA": [
+     1,
+     "orden_pantalla"
+    ],
+    "Studio FET": [
+     2,
+     "orden_pantalla"
+    ],
+    "Classic VCA": [
+     3,
+     "orden_pantalla"
+    ],
+    "Vintage VCA": [
+     4,
+     "orden_pantalla"
+    ],
+    "Vintage FET": [
+     5,
+     "orden_pantalla"
+    ],
+    "Vintage Opto": [
+     6,
+     "censo"
+    ]
+   }
+  },
+  "limiter_threshold": {
+   "index": 12,
+   "unit": "dB",
+   "evidence": "censo",
+   "nota": "0 → -3.3"
+  },
+  "mix": {
+   "index": 25,
+   "unit": "%",
+   "evidence": "censo",
+   "nota": "100 → 61"
+  },
+  "input_gain": {
+   "index": 27,
+   "unit": "dB",
+   "evidence": "censo",
+   "nota": "0 → -7.5"
+  },
+  "output_gain": {
+   "index": 28,
+   "unit": "dB",
+   "evidence": "censo",
+   "nota": "0 → 2.5 (se pidió 2.25; guardado encima de CensoComp-valores2 a las 18:14)"
+  }
  },
- "pendiente": ["output_gain (se pidió 2.25 en la pasada 2 y no apareció en el archivo)",
-               "auto_gain, limiter on/off, distortion, release AUTO: interruptores, van uno por guardado"]
+ "pendiente": [
+  "auto_gain, limiter on/off, distortion, release AUTO: interruptores, van uno por guardado"
+ ]
 }
