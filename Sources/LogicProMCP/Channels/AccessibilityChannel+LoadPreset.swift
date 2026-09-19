@@ -165,6 +165,9 @@ extension AccessibilityChannel {
                 "first_items": Array(menuItems(menu, runtime: runtime.ax).map(\.title).prefix(6)),
             ])
             cancelMenu(menu, runtime: runtime.ax)
+            if let own = childMenu(of: popup, runtime: runtime.ax), !CFEqual(own, menu) {
+                cancelMenu(own, runtime: runtime.ax)
+            }
         }
         guard let setting else {
             var extras = refusal(operation, identity,
@@ -237,7 +240,8 @@ extension AccessibilityChannel {
         }
         // A menu still hanging open after the press would swallow the next
         // operation's input; close it and say so.
-        let menuLeftOpen = PluginInspector.findOpenSettingMenuAX(in: app, runtime: runtime.ax) != nil
+        let menuLeftOpen = childMenu(of: setting.popup, runtime: runtime.ax) != nil
+            || openMenuOutsideMenuBar(in: app, runtime: runtime.ax) != nil
         if menuLeftOpen {
             cancelMenu(setting.menu, runtime: runtime.ax)
         }
@@ -361,6 +365,15 @@ extension AccessibilityChannel {
 
     /// The same AX-only ladder scan_plugin_presets proved on 12.3: fire, wait,
     /// then OBSERVE — AXShowMenu reports -25206 there even when the menu opens.
+    ///
+    /// WHERE to observe matters. Measured live 2026-09-18: the historical
+    /// `PluginInspector.findOpenSettingMenuAX` searches the WHOLE app for any
+    /// AXMenu with ≥5 items, and the app tree includes the menu bar — it
+    /// returned the Apple menu ("About This Mac", "Force Quit…") after the real
+    /// Setting popup was pressed. The fingerprint rejected it, so nothing was
+    /// pressed, but the right menu was never found. So: first the popup's OWN
+    /// child menu (where macOS attaches an open popup menu), then a global
+    /// search that never descends into the menu bar.
     static func openPopupMenu(
         _ popup: AXUIElement,
         app: AXUIElement,
@@ -370,8 +383,33 @@ extension AccessibilityChannel {
         for action in [kAXShowMenuAction as String, kAXPressAction as String] {
             _ = AXHelpers.performAction(popup, action, runtime: runtime)
             try? await Task.sleep(nanoseconds: UInt64(max(settleMs, 350)) * 1_000_000)
-            if let menu = PluginInspector.findOpenSettingMenuAX(in: app, runtime: runtime) {
+            if let own = childMenu(of: popup, runtime: runtime) {
+                return own
+            }
+            if let menu = openMenuOutsideMenuBar(in: app, runtime: runtime) {
                 return menu
+            }
+        }
+        return nil
+    }
+
+    /// Depth-first search for an open AXMenu (≥5 items) that skips the
+    /// AXMenuBar subtree entirely — the bar's menus are never a plugin's.
+    static func openMenuOutsideMenuBar(
+        in element: AXUIElement,
+        depth: Int = 0,
+        maxDepth: Int = 6,
+        runtime: AXHelpers.Runtime
+    ) -> AXUIElement? {
+        guard depth <= maxDepth else { return nil }
+        let role = AXHelpers.getRole(element, runtime: runtime)
+        if role == (kAXMenuBarRole as String) { return nil }
+        if role == (kAXMenuRole as String), AXHelpers.getChildren(element, runtime: runtime).count >= 5 {
+            return element
+        }
+        for child in AXHelpers.getChildren(element, runtime: runtime) {
+            if let found = openMenuOutsideMenuBar(in: child, depth: depth + 1, maxDepth: maxDepth, runtime: runtime) {
+                return found
             }
         }
         return nil

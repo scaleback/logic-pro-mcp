@@ -1,0 +1,304 @@
+@preconcurrency import ApplicationServices
+import Foundation
+import Testing
+@testable import LogicProMCP
+
+/// logic_plugins.load_preset at the channel layer (PLAN_PLUGINS_Y_PRESETS FASE C).
+///
+/// The fixture mirrors the verified-plugin live fixture (track headers, mixer
+/// strip, insert slots, a plugin window titled by track) and adds what this op
+/// walks: the Setting popup, its menu, a "Claude" folder and a leaf. Pressing a
+/// leaf repaints the popup with the leaf's title, the way Logic does.
+private final class PresetFixture: @unchecked Sendable {
+    let b = FakeAXRuntimeBuilder()
+    let runtime: AXLogicProElements.Runtime
+    let popup: AXUIElement
+    let pressedLeaves = MutableBox<[String]>([])
+
+    static let trackName = "Audio 1"
+
+    init(
+        slotPlugin: String = "Compressor",
+        popupValue: String = "Manual",
+        leafTitles: [String] = ["Prueba", "Otra"],
+        repaintTo: String? = nil,                 // popup value after a press; nil = the leaf title
+        leafIsFolder: Bool = false,
+        appleMenuInMenuBar: Bool = false,
+        sideChainPopupFirst: Bool = false
+    ) {
+        let b = self.b
+        let app = b.element(1)
+        let arrange = b.element(2)
+        let headers = b.element(3)
+        let mixer = b.element(4)
+        let pluginWindow = b.element(5)
+        let setting = b.element(6)
+        let settingMenu = b.element(7)
+        let claudeFolder = b.element(8)
+        let claudeMenu = b.element(9)
+
+        // Track header + mixer strip with the plugin at insert 0.
+        let row = b.element(100)
+        b.setAttribute(row, kAXRoleAttribute as String, kAXLayoutItemRole as String)
+        b.setAttribute(row, kAXDescriptionAttribute as String, "1개의 ‘\(Self.trackName)’ 트랙")
+        b.setAttribute(row, kAXSelectedAttribute as String, true)
+        b.setAttribute(headers, kAXRoleAttribute as String, kAXGroupRole as String)
+        b.setAttribute(headers, kAXDescriptionAttribute as String, "트랙 헤더")
+        b.setChildren(headers, [row])
+
+        let slot = b.element(200)
+        let bypass = b.element(201)
+        let open = b.element(202)
+        b.setAttribute(slot, kAXRoleAttribute as String, kAXGroupRole as String)
+        b.setAttribute(slot, kAXDescriptionAttribute as String, slotPlugin)
+        b.setChildren(slot, [bypass, open])
+        b.setAttribute(bypass, kAXRoleAttribute as String, kAXCheckBoxRole as String)
+        b.setAttribute(bypass, kAXDescriptionAttribute as String, "바이패스")
+        b.setAttribute(bypass, kAXValueAttribute as String, 0)
+        b.setAttribute(open, kAXRoleAttribute as String, kAXButtonRole as String)
+        b.setAttribute(open, kAXDescriptionAttribute as String, "열기")
+        let strip = b.element(300)
+        b.setAttribute(strip, kAXRoleAttribute as String, kAXLayoutItemRole as String)
+        b.setChildren(strip, [slot])
+        b.setAttribute(mixer, kAXRoleAttribute as String, "AXLayoutArea")
+        b.setAttribute(mixer, kAXDescriptionAttribute as String, "Mixer")
+        b.setChildren(mixer, [strip])
+        b.setAttribute(arrange, kAXRoleAttribute as String, kAXWindowRole as String)
+        b.setAttribute(arrange, kAXTitleAttribute as String, "Prueba — Tracks")
+        b.setChildren(arrange, [headers, mixer])
+
+        // Setting menu: the fingerprint items, a "Claude" folder, and presets.
+        func item(_ id: Int, _ title: String) -> AXUIElement {
+            let el = b.element(id)
+            b.setAttribute(el, kAXRoleAttribute as String, kAXMenuItemRole as String)
+            b.setAttribute(el, kAXTitleAttribute as String, title)
+            return el
+        }
+        let fingerprint = ["Copy", "Paste", "Save As…", "Save A Copy As…", "Recall Default"]
+            .enumerated().map { item(400 + $0.offset, $0.element) }
+        b.setAttribute(claudeFolder, kAXRoleAttribute as String, kAXMenuItemRole as String)
+        b.setAttribute(claudeFolder, kAXTitleAttribute as String, "Claude")
+        b.setAttribute(settingMenu, kAXRoleAttribute as String, kAXMenuRole as String)
+        b.setChildren(settingMenu, fingerprint + [claudeFolder])
+        let leaves = leafTitles.enumerated().map { item(500 + $0.offset, $0.element) }
+        if leafIsFolder {
+            let inner = b.element(599)
+            b.setAttribute(inner, kAXRoleAttribute as String, kAXMenuRole as String)
+            b.setChildren(leaves[0], [inner])
+        }
+        b.setAttribute(claudeMenu, kAXRoleAttribute as String, kAXMenuRole as String)
+        b.setChildren(claudeMenu, leaves)
+
+        b.setAttribute(setting, kAXRoleAttribute as String, kAXPopUpButtonRole as String)
+        b.setAttribute(setting, kAXValueAttribute as String, popupValue)
+
+        // Optional Side Chain popup whose menu lacks the fingerprint.
+        var popups = [setting]
+        let sideChain = b.element(10)
+        let sideChainMenu = b.element(11)
+        if sideChainPopupFirst {
+            b.setAttribute(sideChain, kAXRoleAttribute as String, kAXPopUpButtonRole as String)
+            b.setAttribute(sideChain, kAXValueAttribute as String, "Internal")
+            b.setAttribute(sideChainMenu, kAXRoleAttribute as String, kAXMenuRole as String)
+            b.setChildren(sideChainMenu, ["Internal", "Input", "Bus 1", "Bus 2", "Audio 2"]
+                .enumerated().map { item(600 + $0.offset, $0.element) })
+            popups = [sideChain, setting]
+        }
+
+        b.setAttribute(pluginWindow, kAXRoleAttribute as String, kAXWindowRole as String)
+        b.setAttribute(pluginWindow, kAXSubroleAttribute as String, kAXDialogSubrole as String)
+        b.setAttribute(pluginWindow, kAXTitleAttribute as String, Self.trackName)
+        b.setAttribute(pluginWindow, kAXMainAttribute as String, false)
+        b.setAttribute(pluginWindow, kAXFocusedAttribute as String, false)
+        // `isPluginEditorWindow` requires the chrome Logic draws on every plugin
+        // window: a close button and a toggle labeled exactly "bypass".
+        let close = b.element(30), windowBypass = b.element(31)
+        b.setAttribute(close, kAXRoleAttribute as String, kAXButtonRole as String)
+        b.setAttribute(windowBypass, kAXRoleAttribute as String, kAXCheckBoxRole as String)
+        b.setAttribute(windowBypass, kAXDescriptionAttribute as String, "bypass")
+        b.setAttribute(pluginWindow, kAXCloseButtonAttribute as String, close)
+        b.setChildren(pluginWindow, [windowBypass] + popups)
+
+        // The live trap (2026-09-18): the menu bar's Apple menu is in the same
+        // app tree and has ≥5 items, so a whole-app "any open menu" search finds
+        // it before the Setting menu.
+        var appChildren: [AXUIElement] = []
+        if appleMenuInMenuBar {
+            let bar = b.element(20), barItem = b.element(21), appleMenu = b.element(22)
+            b.setAttribute(bar, kAXRoleAttribute as String, kAXMenuBarRole as String)
+            b.setAttribute(barItem, kAXRoleAttribute as String, kAXMenuBarItemRole as String)
+            b.setAttribute(appleMenu, kAXRoleAttribute as String, kAXMenuRole as String)
+            b.setChildren(appleMenu, ["About This Mac", "System Information", "System Settings…",
+                                      "App Store…", "Recent Items", "Force Quit…"]
+                .enumerated().map { item(700 + $0.offset, $0.element) })
+            b.setChildren(barItem, [appleMenu])
+            b.setChildren(bar, [barItem])
+            appChildren.append(bar)
+        }
+        b.setChildren(app, appChildren)
+        b.setAttribute(app, kAXWindowsAttribute as String, [arrange, pluginWindow])
+        b.setAttribute(app, kAXMainWindowAttribute as String, arrange)
+
+        let keys = (slot: b.elementID(slot), open: b.elementID(open), setting: b.elementID(setting),
+                    sideChain: b.elementID(sideChain), claude: b.elementID(claudeFolder),
+                    leaves: leaves.map { b.elementID($0) })
+        let pressed = pressedLeaves
+        self.popup = setting
+        self.runtime = b.makeLogicRuntime(
+            appElement: app,
+            setAttributeHandler: { [b] el, attribute, value in
+                b.setAttribute(el, attribute, value)
+                return true
+            },
+            performActionHandler: { [b] el, action in
+                let key = b.elementID(el)
+                if action == (kAXCancelAction as String) {
+                    b.setChildren(setting, []); b.setChildren(sideChain, [])
+                    return true
+                }
+                if key == keys.slot || key == keys.open {
+                    b.setAttribute(pluginWindow, kAXMainAttribute as String, true)
+                    b.setAttribute(pluginWindow, kAXFocusedAttribute as String, true)
+                    return false                         // real 12.3: opens, reports non-zero
+                }
+                if key == keys.setting, action == (kAXShowMenuAction as String) {
+                    b.setChildren(setting, [settingMenu])
+                    return false
+                }
+                if key == keys.sideChain, action == (kAXShowMenuAction as String) {
+                    b.setChildren(sideChain, [sideChainMenu])
+                    return false
+                }
+                if key == keys.claude, action == (kAXPressAction as String) {
+                    b.setChildren(claudeFolder, [claudeMenu])
+                    return true
+                }
+                if let i = keys.leaves.firstIndex(of: key), action == (kAXPressAction as String) {
+                    let title = leafTitles[i]
+                    pressed.value.append(title)
+                    if !leafIsFolder || i != 0 {
+                        b.setAttribute(setting, kAXValueAttribute as String, repaintTo ?? title)
+                        b.setChildren(setting, [])       // the menu closes after a pick
+                    }
+                    return true
+                }
+                return true
+            }
+        )
+    }
+
+    func run(_ path: [String], plugin: String = "Compressor") async -> ChannelResult {
+        let json = String(decoding: try! JSONSerialization.data(withJSONObject: path), as: UTF8.self)
+        return await AccessibilityChannel.defaultLoadPreset(
+            params: ["track": "0", "insert": "0", "plugin": plugin, "preset_path": json],
+            runtime: runtime,
+            frontDocumentPath: { "/tmp/Prueba.logicx" },
+            settleMs: 1
+        )
+    }
+}
+
+private func body(_ result: ChannelResult) -> [String: Any] {
+    let text: String
+    switch result {
+    case .success(let s), .error(let s): text = s
+    }
+    return (try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any]) ?? [:]
+}
+
+@Suite("logic_plugins.load_preset")
+struct PluginLoadPresetTests {
+
+    @Test("a unique leaf under the Setting menu loads and reads back as State A")
+    func loadsAndReadsBack() async {
+        let f = PresetFixture()
+        let result = await f.run(["Claude", "Prueba"])
+        let obj = body(result)
+        #expect(obj["state"] as? String == "A")
+        #expect(obj["requested"] as? String == "Prueba")
+        #expect(obj["observed"] as? String == "Prueba")
+        #expect(obj["popup_value_before"] as? String == "Manual")
+        #expect(f.pressedLeaves.value == ["Prueba"])
+    }
+
+    /// Regression, measured live 2026-09-18: the whole-app menu search returned
+    /// the Apple menu from the menu bar, the fingerprint rejected it, and the
+    /// real Setting menu was never found. The popup's own menu must win.
+    @Test("the menu bar's Apple menu is never mistaken for the Setting menu")
+    func menuBarDoesNotShadowTheSettingMenu() async {
+        let f = PresetFixture(appleMenuInMenuBar: true, sideChainPopupFirst: true)
+        let obj = body(await f.run(["Claude", "Prueba"]))
+        #expect(obj["state"] as? String == "A", "got \(obj)")
+        #expect(f.pressedLeaves.value == ["Prueba"])
+    }
+
+    @Test("a popup whose menu lacks the fingerprint (Side Chain) is skipped, not used")
+    func sideChainPopupIsSkipped() async {
+        let f = PresetFixture(sideChainPopupFirst: true)
+        let obj = body(await f.run(["Claude", "Prueba"]))
+        #expect(obj["state"] as? String == "A")
+    }
+
+    @Test("the popup's loaded name cannot hide it: 'Manual' or a preset name both work")
+    func popupValueDoesNotMatter() async {
+        for value in ["Manual", "CensoComp-valores2", "#default"] {
+            let f = PresetFixture(popupValue: value)
+            #expect(body(await f.run(["Claude", "Prueba"]))["state"] as? String == "A", "\(value)")
+        }
+    }
+
+    @Test("a missing leaf is State C with the real titles, and nothing is pressed")
+    func missingLeafListsWhatIsThere() async {
+        let f = PresetFixture()
+        let obj = body(await f.run(["Claude", "No existe"]))
+        #expect(obj["state"] as? String == "C")
+        #expect(obj["write_attempted"] as? Bool == false)
+        #expect((obj["available_at_level"] as? [String]) == ["Prueba", "Otra"])
+        #expect(f.pressedLeaves.value.isEmpty)
+    }
+
+    @Test("a repeated leaf title is refused rather than guessed")
+    func repeatedLeafIsRefused() async {
+        let f = PresetFixture(leafTitles: ["Prueba", "Prueba"])
+        let obj = body(await f.run(["Claude", "Prueba"]))
+        #expect(obj["state"] as? String == "C")
+        #expect(f.pressedLeaves.value.isEmpty)
+    }
+
+    @Test("a folder at the end of the path is State C folder_not_preset")
+    func folderIsNotAPreset() async {
+        let f = PresetFixture(leafIsFolder: true)
+        let obj = body(await f.run(["Claude", "Prueba"]))
+        #expect(obj["error"] as? String == "folder_not_preset")
+        #expect(f.pressedLeaves.value.isEmpty)
+    }
+
+    @Test("a readback that differs from the pressed leaf is State B, never A")
+    func readbackMismatchIsStateB() async {
+        let f = PresetFixture(repaintTo: "Algo más")
+        let obj = body(await f.run(["Claude", "Prueba"]))
+        #expect(obj["state"] as? String == "B")
+        #expect(obj["reason"] as? String == "readback_mismatch")
+        #expect(obj["observed"] as? String == "Algo más")
+    }
+
+    @Test("the wrong plugin in the insert is refused before any window opens")
+    func wrongPluginIsRefused() async {
+        let f = PresetFixture(slotPlugin: "ChromaVerb")
+        let obj = body(await f.run(["Claude", "Prueba"]))
+        #expect(obj["error"] as? String == "target_plugin_mismatch")
+        #expect(obj["write_attempted"] as? Bool == false)
+        #expect(f.pressedLeaves.value.isEmpty)
+    }
+
+    @Test("plugin names match case-insensitively; paths decode from JSON only")
+    func helpers() {
+        #expect(AccessibilityChannel.pluginNamesMatch("AmpliTube", " amplitube "))
+        #expect(!AccessibilityChannel.pluginNamesMatch("AmpliTube", "AmpliTube 5"))
+        #expect(AccessibilityChannel.decodePresetPath(#"["Claude","80's"]"#) == ["Claude", "80's"])
+        #expect(AccessibilityChannel.decodePresetPath(#"["Claude",""]"#) == nil)
+        #expect(AccessibilityChannel.decodePresetPath("Claude/Prueba") == nil)
+        #expect(AccessibilityChannel.normalizedMenuTitle("Save As…") == "save as")
+        #expect(AccessibilityChannel.normalizedMenuTitle("Save As...") == "save as")
+    }
+}
