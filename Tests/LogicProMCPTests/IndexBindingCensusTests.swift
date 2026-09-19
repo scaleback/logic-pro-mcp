@@ -33,6 +33,7 @@ struct IndexBindingCensusTests {
             .tracksDuplicate,       // topology mutation; wrong target = phantom copy
             .tracksSetInstrument,   // replace-class; overwrites the wrong strip's patch
             .pluginsInsertVerified, // insert-class topology, trackIndex-keyed
+            .pluginsLoadPreset,     // replaces a track-indexed insert's whole state
         ]
         #expect(OperationRegistry.corroboratedOperationIDs == expectedSeedSet)
         #expect(Self.ids { $0.indexBinding == .corroborated } == expectedSeedSet)

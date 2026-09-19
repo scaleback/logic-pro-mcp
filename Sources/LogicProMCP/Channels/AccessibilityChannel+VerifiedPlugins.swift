@@ -1111,7 +1111,7 @@ extension AccessibilityChannel {
         return (true, abs(restored - before) <= 0.5)
     }
 
-    private static func trackSelectionFailedStateC(_ operation: String, _ identity: [String: Any], _ detail: String) -> String {
+    static func trackSelectionFailedStateC(_ operation: String, _ identity: [String: Any], _ detail: String) -> String {
         HonestContract.encodeV2StateC(
             error: .trackSelectionFailed,
             extras: [
@@ -1125,7 +1125,7 @@ extension AccessibilityChannel {
         )
     }
 
-    private static func incompleteInventoryStateC(_ operation: String, _ identity: [String: Any], _ detail: String) -> String {
+    static func incompleteInventoryStateC(_ operation: String, _ identity: [String: Any], _ detail: String) -> String {
         HonestContract.encodeV2StateC(
             error: .incompleteInventory,
             extras: [
@@ -1139,7 +1139,7 @@ extension AccessibilityChannel {
         )
     }
 
-    private static func windowOpenFailedStateC(
+    static func windowOpenFailedStateC(
         _ operation: String,
         _ identity: [String: Any],
         _ detail: String,
@@ -1235,7 +1235,7 @@ extension AccessibilityChannel {
         return nil
     }
 
-    private static func demotePluginWindowBeforeAcquisition(
+    static func demotePluginWindowBeforeAcquisition(
         _ window: AXUIElement,
         runtime: AXLogicProElements.Runtime
     ) -> Bool {
@@ -1253,7 +1253,7 @@ extension AccessibilityChannel {
         return !pluginWindowIsFront(window, runtime: runtime.ax)
     }
 
-    private static func pluginWindowIsFront(
+    static func pluginWindowIsFront(
         _ window: AXUIElement,
         runtime: AXHelpers.Runtime
     ) -> Bool {
@@ -1286,7 +1286,7 @@ extension AccessibilityChannel {
         return CFEqual(slots[insert].element, originalSlot)
     }
 
-    private static func rankedPluginSlotOpenControls(
+    static func rankedPluginSlotOpenControls(
         in targetSlot: AXUIElement,
         runtime: AXHelpers.Runtime
     ) -> [(rank: Int, element: AXUIElement)] {
@@ -1345,7 +1345,7 @@ extension AccessibilityChannel {
     /// AXPress only. The former element-derived `clickElementCenter` fallback is
     /// removed; `openPluginWindowFromTargetSlot` fails closed (`window_open_failed`)
     /// when no ranked control responds to AXPress, never a coordinate click.
-    private static func pressElement(_ element: AXUIElement, runtime: AXHelpers.Runtime) -> Bool {
+    static func pressElement(_ element: AXUIElement, runtime: AXHelpers.Runtime) -> Bool {
         AXHelpers.performAction(element, kAXPressAction as String, runtime: runtime)
     }
 
@@ -1392,7 +1392,7 @@ extension AccessibilityChannel {
     /// (Logic commits selection asynchronously). Self-contained so the verified
     /// write path does not depend on the main channel's private selection
     /// verifier; uses the same `AXSelected` readback contract.
-    private static func verifiedTrackSelected(
+    static func verifiedTrackSelected(
         track: Int,
         runtime: AXLogicProElements.Runtime
     ) async -> Bool {
@@ -3236,7 +3236,7 @@ extension AccessibilityChannel {
         "logic.stock.effect.compressor",
     ]
 
-    private static func invalidParamsStateC(_ operation: String, _ detail: String) -> String {
+    static func invalidParamsStateC(_ operation: String, _ detail: String) -> String {
         HonestContract.encodeV2StateC(
             error: .invalidParams,
             extras: [

@@ -50,7 +50,7 @@ struct OperationRegistryTests {
         "delete_marker": .defaultInstall,
     ]
 
-    private static let smallToolCount = 19
+    private static let smallToolCount = 20
     private static let expectedRegistryCount =
         commands.count + mixerCommands.count + navigateCommands.count + smallToolCount
             + editCommands.count + projectCommands.count + midiCommands.count + trackCommands.count
@@ -368,6 +368,7 @@ struct OperationRegistryTests {
         ("logic_plugins", "plugins.get_inventory", "get_inventory", .readOnly, .short, .none),
         ("logic_plugins", "plugins.set_param_verified", "set_param_verified", .mutating, .medium, .readbackRequired),
         ("logic_plugins", "plugins.insert_verified", "insert_verified", .mutating, .medium, .readbackRequired),
+        ("logic_plugins", "plugins.load_preset", "load_preset", .mutating, .medium, .readbackRequired),
     ]
 
     @Test("small-tool registries are exact, unique, and isolated")
@@ -406,7 +407,7 @@ struct OperationRegistryTests {
             #expect(spec.mutability == entry.mutability)
             #expect(spec.confirmation == (id == .systemClearTraces ? .l2 : .none))
             #expect(spec.target == (
-                id == .pluginsSetParamVerified || id == .pluginsInsertVerified
+                id == .pluginsSetParamVerified || id == .pluginsInsertVerified || id == .pluginsLoadPreset
                     ? .acceptsStableTarget
                     : .none
             ))
@@ -453,7 +454,7 @@ struct OperationRegistryTests {
 
     @Test("plugin medium deadlines match server decisions")
     func pluginMediumDeadlineFlagParity() {
-        let commands = ["set_param_verified", "insert_verified"]
+        let commands = ["set_param_verified", "insert_verified", "load_preset"]
 
         for command in commands {
             #expect(OperationRegistry.deadlineSeconds(tool: "logic_plugins", command: command) == 90)

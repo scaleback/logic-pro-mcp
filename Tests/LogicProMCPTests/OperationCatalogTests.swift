@@ -42,11 +42,13 @@ struct OperationCatalogTests {
         .pluginsGetInventory: ["index", "track"],
         .pluginsSetParamVerified: ["track"],
         .pluginsInsertVerified: ["track"],
+        .pluginsLoadPreset: ["track"],
     ]
     private static let selectorLiveQualificationReasonByOperation: [OperationID: String] = [
         .pluginsGetInventory: "AX inventory must expose the selected strip identity after ChannelRouter forwarding",
         .pluginsSetParamVerified: "AX apply-back must expose target_identity after verified preflight",
         .pluginsInsertVerified: "AX insert readback must expose target_identity after verified preflight",
+        .pluginsLoadPreset: "AX Setting-popup readback must expose target_identity after verified preflight",
     ]
 
     private func withOperationTraceEnvironment<Result>(
@@ -152,6 +154,9 @@ struct OperationCatalogTests {
         ],
         .pluginsInsertVerified: [
             "insert", "mode", "plugin", "plugin_id", "plugin_name", "project_expected_path", "slot",
+        ],
+        .pluginsLoadPreset: [
+            "insert", "plugin", "plugin_id", "plugin_name", "preset_path", "project_expected_path", "slot",
         ],
         .editQuantize: ["grid", "value"],
         // Batuta (Fase 3): confirmed:true gate on the three edit ops with no
@@ -401,7 +406,7 @@ struct OperationCatalogTests {
                     ("get_trace", "system.get_trace", ["trace_id"], .none),
                     ("clear_traces", "system.clear_traces", ["confirmed"], .l2),
                 ]
-                #expect(OperationRegistry.specs.count == 114)
+                #expect(OperationRegistry.specs.count == 115)
                 for (command, operationID, allowedParams, confirmation) in expectedSpecs {
                     let spec = OperationRegistry.spec(tool: "logic_system", command: command)
                     #expect(spec?.id.rawValue == operationID, "\(command) must have one public spec")
@@ -550,12 +555,12 @@ struct OperationCatalogTests {
         }
 
         #expect(advertised.filter { $0.1 == "index" }.count == 17)
-        #expect(advertised.filter { $0.1 == "track" }.count == 16)
-        #expect(advertised.count == 33)
+        #expect(advertised.filter { $0.1 == "track" }.count == 17)
+        #expect(advertised.count == 34)
         #expect(probes.filter { $0.1 == "index" }.count == 16)
         #expect(probes.filter { $0.1 == "track" }.count == 13)
         #expect(probes.count == 29)
-        #expect(Self.selectorsRequiringLiveQualificationByOperation.values.reduce(0) { $0 + $1.count } == 4)
+        #expect(Self.selectorsRequiringLiveQualificationByOperation.values.reduce(0) { $0 + $1.count } == 5)
         #expect(
             Set(Self.selectorLiveQualificationReasonByOperation.keys)
                 == Set(Self.selectorsRequiringLiveQualificationByOperation.keys)
@@ -727,7 +732,7 @@ struct OperationCatalogTests {
 
     @Test("strict: every registered operation rejects unknown keys and accepts its pinned keys")
     func strictRegistryWideInvariant() throws {
-        #expect(OperationRegistry.specs.count == 114)
+        #expect(OperationRegistry.specs.count == 115)
         #expect(Set(OperationRegistry.specs.map(\.id)) == Set(OperationID.allCases))
 
         for spec in OperationRegistry.specs {
@@ -808,9 +813,9 @@ struct OperationCatalogTests {
             $0.target == .acceptsStableTarget
         }.map(\.id))
         #expect(actualIndex.count == 17)
-        #expect(actualTrack.count == 16)
+        #expect(actualTrack.count == 17)
         #expect(actualTargetRef == targetBearing)
-        #expect(actualTargetRef.count == 14)
+        #expect(actualTargetRef.count == 15)
         for spec in OperationRegistry.specs {
             #expect(
                 spec.allowedParams.isDisjoint(
@@ -907,7 +912,7 @@ struct OperationCatalogTests {
         #expect(body["generated_at"] as? String != nil)
         #expect(body["operation_count"] as? Int == OperationRegistry.specs.count)
         let operations = try #require(body["operations"] as? [[String: Any]])
-        #expect(operations.count == 114)
+        #expect(operations.count == 115)
         #expect(!text.contains("\n"))
 
         let ids = operations.compactMap { $0["id"] as? String }

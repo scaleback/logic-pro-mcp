@@ -186,8 +186,8 @@ extension OperationTraceTests {
         let mutatingSpecs = OperationRegistry.specs.filter {
             $0.mutability == Mutability.`mutating`
         }
-        #expect(OperationRegistry.specs.count == 114)
-        #expect(mutatingSpecs.count == 91)
+        #expect(OperationRegistry.specs.count == 115)
+        #expect(mutatingSpecs.count == 92)
 
         // A mutating op that refuses BEFORE dispatch starts its trace (the
         // consent-first setup_arm_key, #413) starts no trace with the coverage
@@ -297,7 +297,7 @@ extension OperationTraceTests {
 
         let readOnlySpecs = OperationRegistry.specs.filter { $0.mutability == .readOnly }
         let mutatingSpecs = OperationRegistry.specs.filter { $0.mutability == Mutability.`mutating` }
-        #expect(OperationRegistry.specs.count == 114)
+        #expect(OperationRegistry.specs.count == 115)
         #expect(readOnlySpecs.count == 23)
         // Mutability is total: the mutating census (90) and this inverse gate
         // (23) together account for every registered spec, so a new operation

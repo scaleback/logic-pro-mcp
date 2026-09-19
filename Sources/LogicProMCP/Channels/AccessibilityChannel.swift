@@ -709,6 +709,8 @@ package actor AccessibilityChannel: AccessibilityChannelProtocol {
             return await AccessibilityChannel.defaultSetParamVerified(params: params, runtime: runtime.logicRuntime)
         case "plugin.insert_verified":
             return await AccessibilityChannel.defaultInsertVerified(params: params, runtime: runtime.logicRuntime)
+        case "plugin.load_preset":
+            return await AccessibilityChannel.defaultLoadPreset(params: params, runtime: runtime.logicRuntime)
 
         // MARK: - Automation
         case "automation.get_mode":

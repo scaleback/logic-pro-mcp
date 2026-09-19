@@ -1015,6 +1015,20 @@ enum SemanticOracleFixtures {
                 """,
             readback: "{}"
         ),
+        // Setting-menu preset load: the popup read back the pressed leaf
+        // ("Prueba" == "Prueba") and the insert still holds the same plugin.
+        .pluginsLoadPreset: SemanticOracleFixture(
+            response: """
+                {"success":true,"verified":true,"state":"A","hc_schema":2,\
+                "operation":"logic_plugins.load_preset",\
+                "target_identity":{"track_index":0,"insert":0,"plugin_requested":"Compressor",\
+                "plugin_observed":"Compressor","track_name":"Audio 1"},\
+                "preset_path":["Claude","Prueba"],"requested":"Prueba","observed":"Prueba",\
+                "popup_value_before":"Manual","plugin_after":"Compressor",\
+                "menu_left_open":false,"write_attempted":true}
+                """,
+            readback: "{}"
+        ),
         // ProjectExportExecutor.aggregate → logic_pro_mcp_export_run.v1, completed
         // fresh run: one project, one bounced+verified artifact (state A,
         // bounce_fired true, on-disk logic_audio evidence). uncertain/failed 0.

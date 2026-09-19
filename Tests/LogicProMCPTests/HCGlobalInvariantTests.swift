@@ -321,6 +321,7 @@ struct HCGlobalInvariantTests {
 
             RouteCase(tool: "logic_plugins", command: "set_param_verified", params: ["track": .int(0), "insert": .int(0), "plugin": .string("logic.stock.gain"), "param": .string("gain_db"), "value": .double(0), "unit": .string("dB"), "mode": .string("duplicate_applyback"), "project_expected_path": .string(fixtures.existingProjectPath)], operation: "plugin.set_param_verified", destinations: [], invariant: .minimumV1),
             RouteCase(tool: "logic_plugins", command: "insert_verified", params: ["track": .int(2), "insert": .int(0), "plugin": .string("Gain"), "mode": .string("duplicate_applyback"), "project_expected_path": .string(fixtures.existingProjectPath), "expected_name": .string("Bass")], operation: "plugin.insert_verified", destinations: [], invariant: .minimumV1),
+            RouteCase(tool: "logic_plugins", command: "load_preset", params: ["track": .int(2), "insert": .int(0), "plugin": .string("Compressor"), "preset_path": .array([.string("Claude"), .string("Prueba")]), "expected_name": .string("Bass")], operation: "plugin.load_preset", destinations: [], invariant: .minimumV1),
         ]
     }
 

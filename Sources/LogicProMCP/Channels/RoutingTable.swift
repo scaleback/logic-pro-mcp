@@ -138,6 +138,7 @@ extension ChannelRouter {
         "plugin.get_inventory":       [.accessibility],
         "plugin.set_param_verified":  [.accessibility],
         "plugin.insert_verified":     [.accessibility],
+        "plugin.load_preset":         [.accessibility],
 
         // MIDI — CoreMIDI only
         "midi.send_note":             [.coreMIDI],

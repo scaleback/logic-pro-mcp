@@ -62,10 +62,10 @@ struct QualificationRunnerTests {
         // ProjectDispatcher, then 89 -> 90 with region.bounce — they defer for
         // the same reason as the rest: no semantic oracle built for them yet
         // (see SemanticOracleTable.swift).
-        #expect(operationCases.count == 114)
+        #expect(operationCases.count == 115)
         #expect(operationCases.filter { $0.status == .passed }.count == 23)
         #expect(operationCases.filter { $0.status == .protocolSmoke }.isEmpty)
-        #expect(operationCases.filter { $0.status == .notQualified }.count == 91)
+        #expect(operationCases.filter { $0.status == .notQualified }.count == 92)
         #expect(operationCases.filter { $0.status == .failed }.isEmpty)
         #expect(operationCases.filter { $0.status == .passed }.allSatisfy {
             $0.verificationKind == .semanticReadback
@@ -253,7 +253,7 @@ struct QualificationRunnerTests {
         let specs = OperationRegistry.specs
         let driveResult = Self.driveResult(specs: specs, qualifiedReadOperationCount: 0)
         #expect(driveResult.operationResults.values.filter { $0.status == .passed }.isEmpty)
-        #expect(driveResult.operationResults.values.filter { $0.status == .notQualified }.count == 114)
+        #expect(driveResult.operationResults.values.filter { $0.status == .notQualified }.count == 115)
         let fixture = try Fixture(specs: specs, drive: { _ in driveResult })
         defer { fixture.remove() }
 
@@ -1698,7 +1698,7 @@ struct QualificationRunnerTests {
         // #373 Phase A: the read-only surface now qualifies semantically.
         #expect(operationCases.filter { $0.status == .passed }.count == 23)
         #expect(operationCases.filter { $0.status == .protocolSmoke }.isEmpty)
-        #expect(operationCases.filter { $0.status == .notQualified }.count == 91)
+        #expect(operationCases.filter { $0.status == .notQualified }.count == 92)
         // #373 Phase A: 22 oracled read-only ops + system.health's bespoke
         // validator. The aggregate axes contribute no passes here.
         #expect(attestation.passed == 23)

@@ -521,6 +521,27 @@ enum AXLocalePolicy {
         rationale: "Identifies the plugin Setting AXPopUpButton by its value substring; read-only locator."
     )
 
+    /// Setting-MENU fingerprint (plugin.load_preset). The popup's own value
+    /// cannot identify it: it shows the loaded setting — "Manual" for every
+    /// AmpliTube insert Edgar opened, or a name like "CensoComp-valores" — so
+    /// `settingPopupValue` misses it as soon as anything is loaded. What the menu
+    /// CONTAINS does not change: captured from Edgar's Logic 12.3.1 (EN UI)
+    /// 2026-09-18, the Setting menu lists Save As…, Save A Copy As…, Save As
+    /// Default, Recall Default, Copy, Paste, Next, Previous. Two items together
+    /// are required, so the Side Chain or View popup cannot pass. Matched after
+    /// stripping a trailing ellipsis. KO spellings unverified, deliberately empty.
+    static let settingMenuSaveAs = LabelSet(
+        canonical: "Save As",
+        variants: [],
+        rationale: "Setting-menu fingerprint item; identifies the menu by content, not by the popup's value."
+    )
+
+    static let settingMenuRecallDefault = LabelSet(
+        canonical: "Recall Default",
+        variants: [],
+        rationale: "Setting-menu fingerprint item; identifies the menu by content, not by the popup's value."
+    )
+
     // MARK: - Read-only heuristic token bags (Phase 3, issue #60)
     //
     // These back read-only *classifiers* (which AX container is the marker

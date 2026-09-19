@@ -44,6 +44,7 @@ enum OperationID: String, CaseIterable, Codable, Sendable, Hashable {
     case pluginsGetInventory = "plugins.get_inventory"
     case pluginsSetParamVerified = "plugins.set_param_verified"
     case pluginsInsertVerified = "plugins.insert_verified"
+    case pluginsLoadPreset = "plugins.load_preset"
     case editUndo = "edit.undo"
     case editRedo = "edit.redo"
     case editCut = "edit.cut"
@@ -323,6 +324,7 @@ enum OperationRegistry {
         ],
         ToolID.logicPlugins.rawValue: [
             "plugins.get_inventory", "plugins.set_param_verified", "plugins.insert_verified",
+            "plugins.load_preset",
         ],
         ToolID.logicEdit.rawValue: [
             "edit.undo", "edit.redo", "edit.cut", "edit.copy", "edit.paste", "edit.delete",
@@ -381,7 +383,7 @@ enum OperationRegistry {
             "setup_arm_key",
         ],
         ToolID.logicPlugins.rawValue: [
-            "get_inventory", "set_param_verified", "insert_verified",
+            "get_inventory", "set_param_verified", "insert_verified", "load_preset",
         ],
         ToolID.logicEdit.rawValue: [
             "undo", "redo", "cut", "copy", "paste", "delete", "select_all", "split", "join",
@@ -471,6 +473,9 @@ enum OperationRegistry {
     /// waiver in #401 (ADR-002 done-bar) so the residual is a visible fact.
     static let corroboratedOperationIDs: Set<OperationID> = [
         .tracksDelete, .tracksDuplicate, .tracksSetInstrument, .pluginsInsertVerified,
+        // Loads a whole preset into a track-indexed insert: the same wrong-track
+        // hazard as insert_verified, so the same corroboration tier.
+        .pluginsLoadPreset,
     ]
 
     /// PRD-007: pinned empty this increment. `.refRequired` is implemented and
@@ -724,6 +729,20 @@ enum OperationRegistry {
             [
                 "insert", "mode", "plugin", "plugin_id", "plugin_name", "project_expected_path",
                 "slot", "track",
+            ]
+        ),
+        (
+            .pluginsLoadPreset,
+            "load_preset",
+            Mutability.`mutating`,
+            // Window acquisition plus a menu walk with a settle per level: well
+            // past the 25 s `short` budget in the worst case, far inside `medium`.
+            DeadlineClass.medium,
+            VerificationPolicy.readbackRequired,
+            TargetPolicy.acceptsStableTarget,
+            [
+                "insert", "plugin", "plugin_id", "plugin_name", "preset_path",
+                "project_expected_path", "slot", "track",
             ]
         ),
     ] as [(OperationID, String, Mutability, DeadlineClass, VerificationPolicy, TargetPolicy, Set<String>)]).map { entry in

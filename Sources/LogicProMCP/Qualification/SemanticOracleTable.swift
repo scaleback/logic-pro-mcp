@@ -205,8 +205,8 @@ enum SemanticOracleTable {
     static let phaseB4MutatingOperationIDs: Set<OperationID> = [
         // mixer (1 — the AX slot-popup insert that reads back the slot name)
         .mixerInsertPlugin,
-        // plugins (1 — the verified apply-back insert, HC v2 State A)
-        .pluginsInsertVerified,
+        // plugins (2 — the verified apply-back insert and the Setting-menu preset load, HC v2 State A)
+        .pluginsInsertVerified, .pluginsLoadPreset,
         // project (3 — the two export executors + the cleanup-apply rename executor)
         .projectExportRun, .projectExportResume, .projectCleanupApply,
         // edit (1 — the sole edit op with an AX State-A path; the other 13 are send-only)
@@ -515,6 +515,7 @@ enum SemanticOracleTable {
         // #373 Phase B4 — plugin-insert / export / cleanup / edit verified-execution oracles.
         mixerInsertPlugin,
         pluginsInsertVerified,
+        pluginsLoadPreset,
         projectExportRun,
         projectExportResume,
         projectCleanupApply,
@@ -2072,6 +2073,22 @@ enum SemanticOracleTable {
             .fieldsEqual(keyA: "target_identity.plugin_id", keyB: "observed_plugin_id"),
             .fieldsEqual(keyA: "target_identity.insert", keyB: "observed_slot"),
             .typedField(key: "write_source", type: .string),
+        ]
+    )
+
+    // plugins.load_preset (PLAN_PLUGINS_Y_PRESETS FASE C): State A iff the
+    // Setting popup read back EXACTLY the leaf that was pressed, on an insert
+    // that still holds the plugin the caller named. `requested`/`observed` are
+    // the pressed leaf title and the popup's value after the press.
+    static let pluginsLoadPreset = SafeMutationOracle.oracle(
+        .pluginsLoadPreset,
+        semantics: [
+            .valueEquals(key: "hc_schema", expected: .number(2)),
+            .valueEquals(key: "operation", expected: .string("logic_plugins.load_preset")),
+            .fieldsEqual(keyA: "requested", keyB: "observed"),
+            .fieldsEqual(keyA: "target_identity.plugin_observed", keyB: "plugin_after"),
+            .typedField(key: "preset_path", type: .array),
+            .valueEquals(key: "write_attempted", expected: .bool(true)),
         ]
     )
 
