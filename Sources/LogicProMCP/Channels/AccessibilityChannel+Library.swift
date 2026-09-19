@@ -92,7 +92,9 @@ extension AccessibilityChannel {
             // unreliable return code — fire, settle, then observe.
             _ = AXHelpers.performAction(popup, action, runtime: runtime.ax)
             try? await Task.sleep(nanoseconds: 350_000_000)
-            if let found = PluginInspector.findOpenSettingMenuAX(in: appRoot, runtime: runtime.ax) {
+            // The popup's own menu first; the app-wide search skips the menu bar.
+            if let found = childMenu(of: popup, runtime: runtime.ax)
+                ?? PluginInspector.findOpenSettingMenuAX(in: appRoot, runtime: runtime.ax) {
                 menu = found
                 break
             }

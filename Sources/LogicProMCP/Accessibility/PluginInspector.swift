@@ -564,7 +564,13 @@ public enum PluginInspector {
         runtime: AXHelpers.Runtime
     ) -> AXUIElement? {
         if depth > max { return nil }
-        if AXHelpers.getRole(element, runtime: runtime) == (kAXMenuRole as String) {
+        let role = AXHelpers.getRole(element, runtime: runtime)
+        // Never descend into the menu bar: its Apple menu has ≥5 items and sits
+        // first in the app tree. Live 2026-09-18 a whole-app search returned it
+        // after a Setting popup was pressed (load_preset); here a scan would
+        // have walked it.
+        if role == (kAXMenuBarRole as String) { return nil }
+        if role == (kAXMenuRole as String) {
             if AXHelpers.getChildren(element, runtime: runtime).count >= minChildren { return element }
         }
         for c in AXHelpers.getChildren(element, runtime: runtime) {

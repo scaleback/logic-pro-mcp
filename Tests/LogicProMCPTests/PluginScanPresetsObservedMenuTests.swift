@@ -30,7 +30,7 @@ import Testing
 private struct ScanPresetsFixture {
     let runtime: AXLogicProElements.Runtime
 
-    init(menuIsOpen: Bool, menuItemCount: Int = 5) {
+    init(menuIsOpen: Bool, menuItemCount: Int = 5, appleMenuInMenuBar: Bool = false) {
         let b = FakeAXRuntimeBuilder()
         let app = b.element(1)
         let pluginWindow = b.element(2)
@@ -58,11 +58,30 @@ private struct ScanPresetsFixture {
                 items.append(item)
             }
             b.setChildren(menu, items)
-            // The open menu appears as a top-level child of the app root.
-            b.setChildren(app, [menu])
-        } else {
-            b.setChildren(app, [])
         }
+        // Live trap (2026-09-18, found by load_preset): the menu bar's Apple menu
+        // lives in the same app tree, has ≥5 items, and comes FIRST.
+        var appChildren: [AXUIElement] = []
+        if appleMenuInMenuBar {
+            let bar = b.element(20), barItem = b.element(21), appleMenu = b.element(22)
+            b.setAttribute(bar, kAXRoleAttribute as String, kAXMenuBarRole as String)
+            b.setAttribute(barItem, kAXRoleAttribute as String, kAXMenuBarItemRole as String)
+            b.setAttribute(appleMenu, kAXRoleAttribute as String, kAXMenuRole as String)
+            let appleItems = ["About This Mac", "System Information", "System Settings…", "App Store…",
+                              "Recent Items", "Force Quit…", "Sleep"].enumerated().map { offset, title -> AXUIElement in
+                let item = b.element(700 + offset)
+                b.setAttribute(item, kAXRoleAttribute as String, kAXMenuItemRole as String)
+                b.setAttribute(item, kAXTitleAttribute as String, title)
+                return item
+            }
+            b.setChildren(appleMenu, appleItems)
+            b.setChildren(barItem, [appleMenu])
+            b.setChildren(bar, [barItem])
+            appChildren.append(bar)
+        }
+        // The open menu appears as a top-level child of the app root.
+        if menuIsOpen { appChildren.append(menu) }
+        b.setChildren(app, appChildren)
 
         // The Setting popup's action ALWAYS returns false — the live bug.
         let popupKey = b.elementID(popup)
@@ -98,4 +117,26 @@ private struct ScanPresetsFixture {
     )
     #expect(!result.isSuccess)
     #expect(result.message.contains("Setting menu did not appear"))
+}
+
+@Test func testScanPresetsNeverTakesTheMenuBarsAppleMenu() async {
+    let fixture = ScanPresetsFixture(menuIsOpen: true, menuItemCount: 6, appleMenuInMenuBar: true)
+    let result = await AccessibilityChannel.runLivePluginPresetScan(
+        runtime: fixture.runtime, settleMs: 0
+    )
+    #expect(result.isSuccess)
+    #expect(result.message.contains("Preset 0"))
+    #expect(!result.message.contains("About This Mac"))
+}
+
+@Test func testScanPresetsFailsClosedRatherThanWalkingTheAppleMenu() async {
+    // Worse half of the trap: the Setting menu never opens, and the old
+    // whole-app search would have walked the Apple menu instead.
+    let fixture = ScanPresetsFixture(menuIsOpen: false, appleMenuInMenuBar: true)
+    let result = await AccessibilityChannel.runLivePluginPresetScan(
+        runtime: fixture.runtime, settleMs: 0
+    )
+    #expect(!result.isSuccess)
+    #expect(result.message.contains("Setting menu did not appear"))
+    #expect(!result.message.contains("About This Mac"))
 }
