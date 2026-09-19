@@ -23,6 +23,7 @@ private final class PresetFixture: @unchecked Sendable {
         leafTitles: [String] = ["Prueba", "Otra"],
         repaintTo: String? = nil,                 // popup value after a press; nil = the leaf title
         leafIsFolder: Bool = false,
+        mixerRebuildsOnLoad: Bool = false,
         appleMenuInMenuBar: Bool = false,
         sideChainPopupFirst: Bool = false
     ) {
@@ -180,6 +181,15 @@ private final class PresetFixture: @unchecked Sendable {
                         b.setAttribute(setting, kAXValueAttribute as String, repaintTo ?? title)
                         b.setChildren(setting, [])       // the menu closes after a pick
                     }
+                    if mixerRebuildsOnLoad {
+                        // Live 2026-09-18: the strip held from before the load reads
+                        // empty afterwards; a fresh walk finds the plugin in a new one.
+                        let fresh = b.element(301)
+                        b.setAttribute(fresh, kAXRoleAttribute as String, kAXLayoutItemRole as String)
+                        b.setChildren(fresh, [slot])
+                        b.setChildren(strip, [])
+                        b.setChildren(mixer, [fresh])
+                    }
                     return true
                 }
                 return true
@@ -271,6 +281,18 @@ struct PluginLoadPresetTests {
         let obj = body(await f.run(["Claude", "Prueba"]))
         #expect(obj["error"] as? String == "folder_not_preset")
         #expect(f.pressedLeaves.value.isEmpty)
+    }
+
+    /// Regression, measured live 2026-09-18: the load succeeded (the popup read
+    /// back the exact leaf) but the receipt said the insert "no longer reads as
+    /// Compressor" — because the strip element held since before the load read
+    /// empty, not because the plugin changed.
+    @Test("a mixer rebuilt by the load is re-read fresh and still reaches State A")
+    func staleStripIsReReadFresh() async {
+        let f = PresetFixture(mixerRebuildsOnLoad: true)
+        let obj = body(await f.run(["Claude", "Prueba"]))
+        #expect(obj["state"] as? String == "A", "got \(obj)")
+        #expect(obj["plugin_after"] as? String == "Compressor")
     }
 
     @Test("a readback that differs from the pressed leaf is State B, never A")

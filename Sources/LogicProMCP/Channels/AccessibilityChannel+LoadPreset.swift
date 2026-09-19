@@ -247,8 +247,18 @@ extension AccessibilityChannel {
         }
 
         // 10 — the plugin at that insert must still be the one we loaded into.
-        let slotsAfter = AXLogicProElements.audioPluginInsertSlots(in: strips[track], runtime: runtime.ax)
-        let pluginAfter = slotsAfter.indices.contains(insert) ? slotsAfter[insert].name : nil
+        // Re-resolve the mixer FROM SCRATCH: measured live 2026-09-18, the strip
+        // element captured in step 5 read back EMPTY after the plugin window was
+        // opened and its menu walked, while a fresh inventory a second later read
+        // "Compressor" at the same insert. A stale reference is not evidence that
+        // the plugin changed.
+        var pluginAfter: String?
+        let rereadDeadline = Date().addingTimeInterval(1.0)
+        repeat {
+            pluginAfter = freshPluginName(track: track, insert: insert, runtime: runtime)
+            if pluginAfter != nil { break }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        } while Date() < rereadDeadline
 
         var extras: [String: Any] = [
             "operation": operation,
@@ -261,8 +271,14 @@ extension AccessibilityChannel {
             "menu_left_open": menuLeftOpen,
             "write_attempted": true,
         ]
-        guard let pluginAfter, pluginNamesMatch(pluginAfter, plugin) else {
-            extras["what_was_observed"] = "the insert no longer reads as '\(plugin)' after the load"
+        // Unreadable and different are different findings; the receipt must not
+        // turn "could not re-read" into "the plugin changed".
+        guard let pluginAfter else {
+            extras["what_was_observed"] = "insert \(insert) could not be re-read after the load"
+            return .success(HonestContract.encodeV2StateB(reason: .readbackUnavailable, extras: extras))
+        }
+        guard pluginNamesMatch(pluginAfter, plugin) else {
+            extras["what_was_observed"] = "insert \(insert) reads '\(pluginAfter)' after the load, not '\(plugin)'"
             return .success(HonestContract.encodeV2StateB(reason: .readbackMismatch, extras: extras))
         }
         guard let after else {
@@ -275,6 +291,16 @@ extension AccessibilityChannel {
     }
 
     // MARK: - Pieces
+
+    /// The plugin name at `insert` of `track`, resolved from the mixer root on
+    /// every call — never from an element held across UI changes.
+    static func freshPluginName(track: Int, insert: Int, runtime: AXLogicProElements.Runtime) -> String? {
+        guard let mixer = AXLogicProElements.getMixerArea(runtime: runtime) else { return nil }
+        let strips = AXLogicProElements.mixerChannelStrips(in: mixer, runtime: runtime.ax)
+        guard strips.indices.contains(track) else { return nil }
+        let slots = AXLogicProElements.audioPluginInsertSlots(in: strips[track], runtime: runtime.ax)
+        return slots.indices.contains(insert) ? slots[insert].name : nil
+    }
 
     /// `preset_path` travels as a JSON array of menu titles: names contain
     /// spaces, slashes and apostrophes ("80's"), so no separator is safe.
