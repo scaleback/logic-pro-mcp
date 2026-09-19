@@ -819,3 +819,31 @@ private func buildSmartControlsPane(_ builder: FakeAXRuntimeBuilder, base: Int) 
     let runtime = builder.makeLogicRuntime(appElement: app)
     #expect(AXLogicProElements.dialogPresent(runtime: runtime))
 }
+
+// MARK: - CGWindowList fallback: which on-screen windows count as a dialog
+
+private func windowInfo(pid: pid_t, layer: Int, width: Double, height: Double) -> [String: Any] {
+    [
+        kCGWindowOwnerPID as String: NSNumber(value: pid),
+        kCGWindowLayer as String: layer,
+        kCGWindowBounds as String: ["Width": NSNumber(value: width), "Height": NSNumber(value: height)],
+    ]
+}
+
+@Test func testCGWindowFallbackIgnoresFloatingPluginPanels() {
+    // Measured 2026-09-19: with Logic active its open plugin editors sit at
+    // layer 3 (floating); the sandboxed server refused every scan as a dialog.
+    let logic: pid_t = 4242
+    #expect(!ProcessUtils.isProbableBlockingWindow(windowInfo(pid: logic, layer: 3, width: 1028, height: 796), logicPID: logic))
+    #expect(!ProcessUtils.isProbableBlockingWindow(windowInfo(pid: logic, layer: 3, width: 1204, height: 605), logicPID: logic))
+}
+
+@Test func testCGWindowFallbackStillSeesTheModalSheetAndSkipsNoise() {
+    let logic: pid_t = 4242
+    // Measured 2026-08-15: File > Save As… sheet at layer 8, 1042x829.
+    #expect(ProcessUtils.isProbableBlockingWindow(windowInfo(pid: logic, layer: 8, width: 1042, height: 829), logicPID: logic))
+    // Main window, a 73x18 overlay, and another app's window are not dialogs.
+    #expect(!ProcessUtils.isProbableBlockingWindow(windowInfo(pid: logic, layer: 0, width: 1920, height: 1050), logicPID: logic))
+    #expect(!ProcessUtils.isProbableBlockingWindow(windowInfo(pid: logic, layer: 103, width: 73, height: 18), logicPID: logic))
+    #expect(!ProcessUtils.isProbableBlockingWindow(windowInfo(pid: 999, layer: 8, width: 1042, height: 829), logicPID: logic))
+}

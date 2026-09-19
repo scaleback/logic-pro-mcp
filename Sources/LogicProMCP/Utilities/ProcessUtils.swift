@@ -247,20 +247,29 @@ enum ProcessUtils {
         ) as? [[String: Any]] else {
             return false
         }
-        return windowList.contains { info in
-            guard let ownerPID = pidValue(from: info[kCGWindowOwnerPID as String]),
-                  ownerPID == pid,
-                  let layer = info[kCGWindowLayer as String] as? Int,
-                  layer != 0,
-                  let bounds = info[kCGWindowBounds as String] as? [String: Any],
-                  let width = (bounds["Width"] as? NSNumber)?.doubleValue,
-                  let height = (bounds["Height"] as? NSNumber)?.doubleValue,
-                  width >= 150, height >= 80
-            else {
-                return false
-            }
-            return true
+        return windowList.contains { isProbableBlockingWindow($0, logicPID: pid) }
+    }
+
+    /// One CGWindowList entry, judged by the measurements above. Plugin
+    /// editors are FLOATING panels: measured 2026-09-19, with Logic active
+    /// its four open plugin windows sat at layer 3 (kCGFloatingWindowLevel)
+    /// and every scan was refused as "blocking dialog". A floating panel is
+    /// never modal, so layer 3 is not evidence of a dialog; the Save As
+    /// sheet measured at layer 8 still is.
+    static func isProbableBlockingWindow(_ info: [String: Any], logicPID: pid_t) -> Bool {
+        guard let ownerPID = pidValue(from: info[kCGWindowOwnerPID as String]),
+              ownerPID == logicPID,
+              let layer = info[kCGWindowLayer as String] as? Int,
+              layer != 0,
+              layer != Int(CGWindowLevelForKey(.floatingWindow)),
+              let bounds = info[kCGWindowBounds as String] as? [String: Any],
+              let width = (bounds["Width"] as? NSNumber)?.doubleValue,
+              let height = (bounds["Height"] as? NSNumber)?.doubleValue,
+              width >= 150, height >= 80
+        else {
+            return false
         }
+        return true
     }
 
     /// Bring Logic Pro to front (used sparingly — most operations don't need focus).
