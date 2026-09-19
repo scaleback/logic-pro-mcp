@@ -398,6 +398,16 @@ struct PluginLoadPresetTests {
         }
     }
 
+    @Test("re-picking the preset the popup already shows is flagged already_selected")
+    func alreadySelectedIsFlagged() async {
+        let fresh = body(await PresetFixture(popupValue: "Otra").run(["Claude", "Prueba"]))
+        #expect(fresh["already_selected"] as? Bool == false)
+        let again = body(await PresetFixture(popupValue: "Prueba").run(["Claude", "Prueba"]))
+        #expect(again["state"] as? String == "A")
+        #expect(again["already_selected"] as? Bool == true)
+        #expect(again["menu_left_open"] as? Bool == false)
+    }
+
     @Test("an 'open' that raises nothing fails closed, never presses 'list', and clears a stray menu")
     func deadOpenFailsClosed() async {
         let f = PresetFixture(openHasNoEffect: true, chooserAlreadyOpen: true)

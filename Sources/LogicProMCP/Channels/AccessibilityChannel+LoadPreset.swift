@@ -256,9 +256,17 @@ extension AccessibilityChannel {
             after = popupValue(setting.popup, runtime: runtime.ax)
         }
         // A menu still hanging open after the press would swallow the next
-        // operation's input; close it and say so.
-        let menuLeftOpen = childMenu(of: setting.popup, runtime: runtime.ax) != nil
-            || openMenuOutsideMenuBar(in: app, runtime: runtime.ax) != nil
+        // operation's input; close it and say so. Give Logic up to a second to
+        // close it first: live 2026-09-18, re-picking the preset already shown
+        // skipped the repaint wait above and the menu was caught mid-close.
+        var menuLeftOpen = false
+        let menuDeadline = Date().addingTimeInterval(1.0)
+        repeat {
+            menuLeftOpen = childMenu(of: setting.popup, runtime: runtime.ax) != nil
+                || openMenuOutsideMenuBar(in: app, runtime: runtime.ax) != nil
+            if !menuLeftOpen { break }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        } while Date() < menuDeadline
         if menuLeftOpen {
             cancelMenu(setting.menu, runtime: runtime.ax)
         }
@@ -286,6 +294,9 @@ extension AccessibilityChannel {
             "popup_value_before": before ?? NSNull(),
             "plugin_after": pluginAfter ?? NSNull(),
             "menu_left_open": menuLeftOpen,
+            // The popup already showed this preset, so its readback cannot tell
+            // a load from no-op: the end state is right, the cause is unproven.
+            "already_selected": before.map { normalizedMenuTitle($0) == normalizedMenuTitle(leafTitle) } ?? false,
             "window_outcome": acquisition.outcome,
             "write_attempted": true,
         ]
