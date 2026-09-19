@@ -1188,7 +1188,7 @@ struct QualificationRunnerTests {
         ))
 
         #expect(result.handshakeOK)
-        #expect(result.catalog?.operationCount == 114)
+        #expect(result.catalog?.operationCount == 115)
         #expect(result.catalogCountMatch)
         #expect(result.traceOK)
 
@@ -1200,7 +1200,7 @@ struct QualificationRunnerTests {
         let smoke = operationResults.filter { $0.status == .protocolSmoke }
 
         #expect(operationResults.count == OperationRegistry.specs.count)
-        #expect(mutating.count == 91)
+        #expect(mutating.count == 92)
         #expect(readOnly.count == 23)
         #expect(operationResults.allSatisfy { $0.status != .failed })
         #expect(operationResults.allSatisfy { $0.responseData != nil && $0.readback != nil })
