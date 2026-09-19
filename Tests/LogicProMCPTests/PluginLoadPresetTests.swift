@@ -9,12 +9,19 @@ import Testing
 /// strip, insert slots, a plugin window titled by track) and adds what this op
 /// walks: the Setting popup, its menu, a "Claude" folder and a leaf. Pressing a
 /// leaf repaints the popup with the leaf's title, the way Logic does.
+///
+/// The insert's buttons behave as measured live 2026-09-18: "open" TOGGLES the
+/// plugin window in and out of Logic's window list, and the window it opens is
+/// NOT main or focused; "list" opens the plug-in chooser (which must never be
+/// pressed); pressing the slot group itself does nothing.
 private final class PresetFixture: @unchecked Sendable {
     let b = FakeAXRuntimeBuilder()
     let runtime: AXLogicProElements.Runtime
     let popup: AXUIElement
     let pressedLeaves = MutableBox<[String]>([])
     let activations = MutableBox<Int>(0)
+    let openPresses = MutableBox<Int>(0)
+    let listPressed = MutableBox<Bool>(false)
 
     static let trackName = "Audio 1"
 
@@ -27,7 +34,10 @@ private final class PresetFixture: @unchecked Sendable {
         mixerRebuildsOnLoad: Bool = false,
         appleMenuInMenuBar: Bool = false,
         sideChainPopupFirst: Bool = false,
-        logicInactive: Bool = false               // plugin panels stay hidden until Logic is activated
+        windowInitiallyOpen: Bool = false,
+        openHasNoEffect: Bool = false,
+        siblingWindowOpen: Bool = false,          // another insert of the same track has its window open
+        chooserAlreadyOpen: Bool = false          // the plug-in chooser menu is up before the call
     ) {
         let b = self.b
         let app = b.element(1)
@@ -52,9 +62,12 @@ private final class PresetFixture: @unchecked Sendable {
         let slot = b.element(200)
         let bypass = b.element(201)
         let open = b.element(202)
+        let list = b.element(203)
         b.setAttribute(slot, kAXRoleAttribute as String, kAXGroupRole as String)
         b.setAttribute(slot, kAXDescriptionAttribute as String, slotPlugin)
-        b.setChildren(slot, [bypass, open])
+        b.setChildren(slot, [bypass, open, list])
+        b.setAttribute(list, kAXRoleAttribute as String, kAXButtonRole as String)
+        b.setAttribute(list, kAXDescriptionAttribute as String, "list")
         b.setAttribute(bypass, kAXRoleAttribute as String, kAXCheckBoxRole as String)
         b.setAttribute(bypass, kAXDescriptionAttribute as String, "바이패스")
         b.setAttribute(bypass, kAXValueAttribute as String, 0)
@@ -122,6 +135,21 @@ private final class PresetFixture: @unchecked Sendable {
         b.setAttribute(pluginWindow, kAXCloseButtonAttribute as String, close)
         b.setChildren(pluginWindow, [windowBypass] + popups)
 
+        let sibling = b.element(40), siblingClose = b.element(41), siblingBypass = b.element(42)
+        b.setAttribute(sibling, kAXRoleAttribute as String, kAXWindowRole as String)
+        b.setAttribute(sibling, kAXTitleAttribute as String, Self.trackName)
+        b.setAttribute(siblingClose, kAXRoleAttribute as String, kAXButtonRole as String)
+        b.setAttribute(siblingBypass, kAXRoleAttribute as String, kAXCheckBoxRole as String)
+        b.setAttribute(siblingBypass, kAXDescriptionAttribute as String, "bypass")
+        b.setAttribute(sibling, kAXCloseButtonAttribute as String, siblingClose)
+        b.setChildren(sibling, [siblingBypass])
+
+        // The plug-in chooser the "list" button opens: a big menu outside the menu bar.
+        let chooser = b.element(50)
+        b.setAttribute(chooser, kAXRoleAttribute as String, kAXMenuRole as String)
+        b.setChildren(chooser, ["Channel EQ", "Compressor", "ChromaVerb", "Gain", "Delay", "AmpliTube"]
+            .enumerated().map { item(800 + $0.offset, $0.element) })
+
         // The live trap (2026-09-18): the menu bar's Apple menu is in the same
         // app tree and has ≥5 items, so a whole-app "any open menu" search finds
         // it before the Setting menu.
@@ -138,15 +166,22 @@ private final class PresetFixture: @unchecked Sendable {
             b.setChildren(bar, [barItem])
             appChildren.append(bar)
         }
-        b.setChildren(app, appChildren)
-        b.setAttribute(app, kAXWindowsAttribute as String, [arrange, pluginWindow])
+        let baseAppChildren = appChildren
+        b.setChildren(app, baseAppChildren + (chooserAlreadyOpen ? [chooser] : []))
+        let windowsWithout = [arrange] + (siblingWindowOpen ? [sibling] : [])
+        b.setAttribute(app, kAXWindowsAttribute as String,
+                       windowsWithout + (windowInitiallyOpen ? [pluginWindow] : []))
         b.setAttribute(app, kAXMainWindowAttribute as String, arrange)
+        let pluginWindowOpen = MutableBox<Bool>(windowInitiallyOpen)
 
-        let keys = (slot: b.elementID(slot), open: b.elementID(open), setting: b.elementID(setting),
+        let keys = (slot: b.elementID(slot), open: b.elementID(open), list: b.elementID(list),
+                    chooser: b.elementID(chooser), setting: b.elementID(setting),
                     sideChain: b.elementID(sideChain), claude: b.elementID(claudeFolder),
                     leaves: leaves.map { b.elementID($0) })
         let pressed = pressedLeaves
         let activations = self.activations
+        let openPresses = self.openPresses
+        let listPressed = self.listPressed
         self.popup = setting
         self.runtime = b.makeLogicRuntime(
             appElement: app,
@@ -157,14 +192,23 @@ private final class PresetFixture: @unchecked Sendable {
             performActionHandler: { [b] el, action in
                 let key = b.elementID(el)
                 if action == (kAXCancelAction as String) {
+                    if key == keys.chooser { b.setChildren(app, baseAppChildren); return true }
                     b.setChildren(setting, []); b.setChildren(sideChain, [])
                     return true
                 }
-                if key == keys.slot || key == keys.open {
-                    if logicInactive, activations.value == 0 { return false }
-                    b.setAttribute(pluginWindow, kAXMainAttribute as String, true)
-                    b.setAttribute(pluginWindow, kAXFocusedAttribute as String, true)
-                    return false                         // real 12.3: opens, reports non-zero
+                if key == keys.slot { return false }        // the group itself does nothing
+                if key == keys.list {
+                    listPressed.value = true
+                    b.setChildren(app, baseAppChildren + [chooser])
+                    return true
+                }
+                if key == keys.open {
+                    openPresses.value += 1
+                    if openHasNoEffect { return false }
+                    pluginWindowOpen.value.toggle()      // measured: a toggle, never main/focused
+                    b.setAttribute(app, kAXWindowsAttribute as String,
+                                   windowsWithout + (pluginWindowOpen.value ? [pluginWindow] : []))
+                    return false                         // real 12.3: acts, reports non-zero
                 }
                 if key == keys.setting, action == (kAXShowMenuAction as String) {
                     b.setChildren(setting, [settingMenu])
@@ -208,7 +252,8 @@ private final class PresetFixture: @unchecked Sendable {
             runtime: runtime,
             frontDocumentPath: { "/tmp/Prueba.logicx" },
             activateLogic: { [activations] in activations.value += 1; return true },
-            settleMs: 1
+            settleMs: 1,
+            windowTimeoutMs: 300
         )
     }
 }
@@ -319,15 +364,52 @@ struct PluginLoadPresetTests {
         #expect(f.activations.value == 0)          // a refusal never pulls Logic to the front
     }
 
-    @Test("Logic in the background is activated before the insert is pressed")
-    func inactiveLogicIsActivatedFirst() async {
-        // Live 2026-09-18: System Settings was front, the press raised no plugin
-        // window, and the op ended State C window_open_failed.
-        let f = PresetFixture(logicInactive: true)
+    @Test("a closed window opened by 'open' is used though Logic never makes it main")
+    func closedWindowOpensWithoutBecomingMain() async {
+        // Live 2026-09-18: the old "which window is front" test never saw it,
+        // pressed on, and the slot's "list" button opened the plug-in chooser.
+        let f = PresetFixture()
         let obj = body(await f.run(["Claude", "Prueba"]))
         #expect(obj["state"] as? String == "A")
+        #expect(obj["window_outcome"] as? String == "opened")
+        #expect(f.openPresses.value == 1)
+        #expect(f.listPressed.value == false)
         #expect(f.activations.value == 1)
-        #expect(f.pressedLeaves.value == ["Prueba"])
+    }
+
+    @Test("an already-open window is closed by the toggle and brought back by one more press")
+    func openWindowIsReopened() async {
+        let f = PresetFixture(windowInitiallyOpen: true)
+        let obj = body(await f.run(["Claude", "Prueba"]))
+        #expect(obj["state"] as? String == "A")
+        #expect(obj["window_outcome"] as? String == "reopened")
+        #expect(f.openPresses.value == 2)
+        #expect(f.listPressed.value == false)
+    }
+
+    @Test("another insert's window with the same title is never taken for ours")
+    func siblingWindowIsIgnored() async {
+        for initiallyOpen in [false, true] {
+            let f = PresetFixture(windowInitiallyOpen: initiallyOpen, siblingWindowOpen: true)
+            let obj = body(await f.run(["Claude", "Prueba"]))
+            #expect(obj["state"] as? String == "A")
+            #expect(obj["window_outcome"] as? String == (initiallyOpen ? "reopened" : "opened"))
+            #expect(f.pressedLeaves.value == ["Prueba"])
+        }
+    }
+
+    @Test("an 'open' that raises nothing fails closed, never presses 'list', and clears a stray menu")
+    func deadOpenFailsClosed() async {
+        let f = PresetFixture(openHasNoEffect: true, chooserAlreadyOpen: true)
+        let obj = body(await f.run(["Claude", "Prueba"]))
+        #expect(obj["state"] as? String == "C")
+        #expect(obj["error"] as? String == "window_open_failed")
+        #expect(obj["write_attempted"] as? Bool == false)
+        #expect(obj["window_outcome"] as? String == "no_new_window")
+        #expect(obj["stray_menu_dismissed"] as? Bool == true)
+        #expect(f.openPresses.value == 1)
+        #expect(f.listPressed.value == false)
+        #expect(f.pressedLeaves.value.isEmpty)
     }
 
     @Test("plugin names match case-insensitively; paths decode from JSON only")

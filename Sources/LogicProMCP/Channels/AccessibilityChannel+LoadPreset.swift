@@ -28,7 +28,8 @@ extension AccessibilityChannel {
         runtime: AXLogicProElements.Runtime = .production,
         frontDocumentPath: FrontDocumentPathProvider = liveFrontDocumentPath,
         activateLogic: @Sendable () -> Bool = { ProcessUtils.activateLogicPro() },
-        settleMs: Int = 250
+        settleMs: Int = 250,
+        windowTimeoutMs: Int = 3_000
     ) async -> ChannelResult {
         let operation = "logic_plugins.load_preset"
 
@@ -137,21 +138,26 @@ extension AccessibilityChannel {
             return .error(windowOpenFailedStateC(operation, identity, "the target track name could not be resolved for window matching"))
         }
         identity["track_name"] = trackName
-        // Logic's plugin windows are floating panels that hide while Logic is
-        // not the active app. Live 2026-09-18: with System Settings in front,
-        // pressing the insert raised nothing (0 windows titled the track);
-        // with Logic in front, the same call reached State A. Every check
-        // above is read-only, so this is the first thing that moves the UI.
+        // Bring Logic forward so the plugin window and its Setting menu open
+        // where the user can see them. (Not the cause of the 2026-09-18 window
+        // failures — that was the toggle; see acquirePluginWindowBySlot.)
+        // Every check above is read-only, so this is the first UI change.
         let activated = activateLogic()
         try? await Task.sleep(nanoseconds: UInt64(max(settleMs, 0)) * 1_000_000)
-        guard let window = await acquirePluginWindowBySlot(slots[insert].element, trackName: trackName, runtime: runtime) else {
+        let acquisition = await acquirePluginWindowBySlot(
+            slots[insert].element, trackName: trackName, runtime: runtime, timeoutMs: windowTimeoutMs
+        )
+        guard let window = acquisition.window else {
+            let dismissed = dismissStrayMenu(runtime: runtime)
+            var diagnostics = acquisition.diagnostics
+            diagnostics["logic_activated"] = activated
+            diagnostics["stray_menu_dismissed"] = dismissed
             return .error(windowOpenFailedStateC(
                 operation, identity,
-                "no plugin window titled '\(trackName)' came to the front after pressing insert \(insert)",
-                diagnostics: [
-                    "plugin_windows_titled_track": pluginEditorWindows(titled: trackName, runtime: runtime).count,
-                    "logic_activated": activated,
-                ]
+                acquisition.outcome == "no_open_control"
+                    ? "insert \(insert) exposes no \"open\" button to press"
+                    : "pressing insert \(insert)'s \"open\" button produced no single new window titled '\(trackName)' (\(acquisition.outcome))",
+                diagnostics: diagnostics
             ))
         }
 
@@ -280,6 +286,7 @@ extension AccessibilityChannel {
             "popup_value_before": before ?? NSNull(),
             "plugin_after": pluginAfter ?? NSNull(),
             "menu_left_open": menuLeftOpen,
+            "window_outcome": acquisition.outcome,
             "write_attempted": true,
         ]
         // Unreadable and different are different findings; the receipt must not
@@ -343,42 +350,85 @@ extension AccessibilityChannel {
         }
     }
 
-    /// Identify an insert's editor window WITHOUT a parameter slider.
+    /// What pressing the insert's "open" button produced.
+    struct WindowAcquisition {
+        var window: AXUIElement?
+        /// opened | reopened | no_open_control | no_new_window | ambiguous
+        var outcome: String
+        var presses: Int
+        var windowsBefore: Int
+        var windowsAfter: Int
+        var raised: Bool
+
+        var diagnostics: [String: Any] {
+            ["window_outcome": outcome, "open_presses": presses,
+             "plugin_windows_before": windowsBefore, "plugin_windows_after": windowsAfter]
+        }
+    }
+
+    /// Identify an insert's editor window WITHOUT a parameter slider, by
+    /// provenance: the window that APPEARS in Logic's window list when this
+    /// insert's "open" button is pressed.
     ///
-    /// set_param_verified tells same-titled windows apart by a known slider;
-    /// this op exists precisely for plugins with no readable sliders. So it uses
-    /// provenance instead: first no plugin window of this track may be front,
-    /// then the insert is pressed, and a window of this track that is front
-    /// afterwards can only have been raised by that press. Two front windows is
-    /// ambiguity, and fails closed.
+    /// Measured live 2026-09-18 (AXPress on the Compressor's "open"):
+    ///   - the button is a TOGGLE — a second press closed the window;
+    ///   - the window it opens is NOT main or focused, so "which window of
+    ///     this track is front" never identified it. That check sent the old
+    ///     ladder on to the slot's "list" button, which opens the plug-in
+    ///     chooser — a menu that left Logic unable to answer AppleScript.
+    /// So only the "open" button is pressed, identity is set difference, and a
+    /// press that CLOSES one of this track's windows means ours was already
+    /// open: press once more to bring it back.
     static func acquirePluginWindowBySlot(
         _ slot: AXUIElement,
         trackName: String,
         runtime: AXLogicProElements.Runtime,
-        timeoutMs: Int = 1_250
-    ) async -> AXUIElement? {
-        for window in pluginEditorWindows(titled: trackName, runtime: runtime)
-        where pluginWindowIsFront(window, runtime: runtime.ax) {
-            guard demotePluginWindowBeforeAcquisition(window, runtime: runtime) else { return nil }
-        }
-        let ranked = rankedPluginSlotOpenControls(in: slot, runtime: runtime.ax)
-        let attempts = ranked.filter { $0.rank == 0 }.map(\.element)
-            + [slot]
-            + ranked.filter { $0.rank != 0 }.map(\.element)
-        for element in attempts {
-            // Real Logic 12.3 can report a non-zero AX status for a press that
-            // DID open the window: trust the observed window, not the return.
-            _ = pressElement(element, runtime: runtime.ax)
+        timeoutMs: Int = 3_000
+    ) async -> WindowAcquisition {
+        let before = pluginEditorWindows(titled: trackName, runtime: runtime)
+        var result = WindowAcquisition(window: nil, outcome: "no_open_control", presses: 0,
+                                       windowsBefore: before.count, windowsAfter: before.count, raised: false)
+        guard let open = rankedPluginSlotOpenControls(in: slot, runtime: runtime.ax)
+            .first(where: { $0.rank == 0 })?.element else { return result }
+
+        var baseline = before
+        result.outcome = "no_new_window"
+        for attempt in 0..<2 {
+            _ = pressElement(open, runtime: runtime.ax)        // 12.3 reports non-zero even when it opens
+            result.presses += 1
+            var closedOurs = false
             let deadline = Date().addingTimeInterval(Double(timeoutMs) / 1_000)
             repeat {
-                let front = pluginEditorWindows(titled: trackName, runtime: runtime)
-                    .filter { pluginWindowIsFront($0, runtime: runtime.ax) }
-                if front.count == 1 { return front[0] }
-                if front.count > 1 { return nil }
+                let now = pluginEditorWindows(titled: trackName, runtime: runtime)
+                result.windowsAfter = now.count
+                let appeared = now.filter { window in !baseline.contains { CFEqual($0, window) } }
+                if appeared.count == 1 {
+                    result.window = appeared[0]
+                    result.outcome = attempt == 0 ? "opened" : "reopened"
+                    result.raised = raise(appeared[0], runtime: runtime.ax)
+                    return result
+                }
+                if appeared.count > 1 {
+                    result.outcome = "ambiguous"
+                    return result
+                }
+                if now.count < baseline.count {
+                    closedOurs = true
+                    baseline = now
+                    break
+                }
                 try? await Task.sleep(nanoseconds: 100_000_000)
             } while Date() < deadline
+            if !closedOurs { return result }
         }
-        return nil
+        return result
+    }
+
+    /// Best effort: make the acquired window the one Logic treats as front,
+    /// so the Setting menu opens where the user can see it.
+    private static func raise(_ window: AXUIElement, runtime: AXHelpers.Runtime) -> Bool {
+        _ = AXHelpers.setAttribute(window, kAXMainAttribute as String, true as CFTypeRef, runtime: runtime)
+        return AXHelpers.performAction(window, kAXRaiseAction as String, runtime: runtime)
     }
 
     /// Popups in the plugin window, the historical value-based match first and
@@ -484,6 +534,16 @@ extension AccessibilityChannel {
 
     static func cancelMenu(_ menu: AXUIElement, runtime: AXHelpers.Runtime) {
         _ = AXHelpers.performAction(menu, kAXCancelAction as String, runtime: runtime)
+    }
+
+    /// A menu Logic left open (outside the menu bar) blocks its AppleScript
+    /// handling — live 2026-09-18 the plug-in chooser did exactly that. After
+    /// a failed window step, close it rather than leave Logic stuck.
+    static func dismissStrayMenu(runtime: AXLogicProElements.Runtime) -> Bool {
+        guard let app = AXLogicProElements.appRoot(runtime: runtime),
+              let menu = openMenuOutsideMenuBar(in: app, runtime: runtime.ax) else { return false }
+        cancelMenu(menu, runtime: runtime.ax)
+        return true
     }
 
     private static func refusal(
