@@ -258,6 +258,13 @@ private final class PresetFixture: @unchecked Sendable {
     }
 }
 
+/// Under this repo's swift-testing 0.99.0 + Swift 6.4, `#expect(a == b)` never
+/// fails when the operands are Bool (measured 2026-09-18: `t == false`,
+/// `t == f`, `opt as? Bool == false` all pass). Bool facts are therefore
+/// checked through these, whose comparison runs outside the macro.
+func isTrueFact(_ value: Any?) -> Bool { (value as? Bool) == true }
+func isFalseFact(_ value: Any?) -> Bool { (value as? Bool) == false }
+
 private func body(_ result: ChannelResult) -> [String: Any] {
     let text: String
     switch result {
@@ -312,7 +319,7 @@ struct PluginLoadPresetTests {
         let f = PresetFixture()
         let obj = body(await f.run(["Claude", "No existe"]))
         #expect(obj["state"] as? String == "C")
-        #expect(obj["write_attempted"] as? Bool == false)
+        #expect(isFalseFact(obj["write_attempted"]))
         #expect((obj["available_at_level"] as? [String]) == ["Prueba", "Otra"])
         #expect(f.pressedLeaves.value.isEmpty)
     }
@@ -359,7 +366,7 @@ struct PluginLoadPresetTests {
         let f = PresetFixture(slotPlugin: "ChromaVerb")
         let obj = body(await f.run(["Claude", "Prueba"]))
         #expect(obj["error"] as? String == "target_plugin_mismatch")
-        #expect(obj["write_attempted"] as? Bool == false)
+        #expect(isFalseFact(obj["write_attempted"]))
         #expect(f.pressedLeaves.value.isEmpty)
         #expect(f.activations.value == 0)          // a refusal never pulls Logic to the front
     }
@@ -373,7 +380,7 @@ struct PluginLoadPresetTests {
         #expect(obj["state"] as? String == "A")
         #expect(obj["window_outcome"] as? String == "opened")
         #expect(f.openPresses.value == 1)
-        #expect(f.listPressed.value == false)
+        #expect(isFalseFact(f.listPressed.value))
         #expect(f.activations.value == 1)
     }
 
@@ -384,7 +391,7 @@ struct PluginLoadPresetTests {
         #expect(obj["state"] as? String == "A")
         #expect(obj["window_outcome"] as? String == "reopened")
         #expect(f.openPresses.value == 2)
-        #expect(f.listPressed.value == false)
+        #expect(isFalseFact(f.listPressed.value))
     }
 
     @Test("another insert's window with the same title is never taken for ours")
@@ -401,11 +408,11 @@ struct PluginLoadPresetTests {
     @Test("re-picking the preset the popup already shows is flagged already_selected")
     func alreadySelectedIsFlagged() async {
         let fresh = body(await PresetFixture(popupValue: "Otra").run(["Claude", "Prueba"]))
-        #expect(fresh["already_selected"] as? Bool == false)
+        #expect(isFalseFact(fresh["already_selected"]))
         let again = body(await PresetFixture(popupValue: "Prueba").run(["Claude", "Prueba"]))
         #expect(again["state"] as? String == "A")
-        #expect(again["already_selected"] as? Bool == true)
-        #expect(again["menu_left_open"] as? Bool == false)
+        #expect(isTrueFact(again["already_selected"]))
+        #expect(isFalseFact(again["menu_left_open"]))
     }
 
     @Test("an 'open' that raises nothing fails closed, never presses 'list', and clears a stray menu")
@@ -414,11 +421,11 @@ struct PluginLoadPresetTests {
         let obj = body(await f.run(["Claude", "Prueba"]))
         #expect(obj["state"] as? String == "C")
         #expect(obj["error"] as? String == "window_open_failed")
-        #expect(obj["write_attempted"] as? Bool == false)
+        #expect(isFalseFact(obj["write_attempted"]))
         #expect(obj["window_outcome"] as? String == "no_new_window")
-        #expect(obj["stray_menu_dismissed"] as? Bool == true)
+        #expect(isTrueFact(obj["stray_menu_dismissed"]))
         #expect(f.openPresses.value == 1)
-        #expect(f.listPressed.value == false)
+        #expect(isFalseFact(f.listPressed.value))
         #expect(f.pressedLeaves.value.isEmpty)
     }
 

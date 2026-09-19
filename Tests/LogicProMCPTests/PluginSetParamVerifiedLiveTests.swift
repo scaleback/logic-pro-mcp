@@ -34,6 +34,8 @@ private final class LiveFixture: @unchecked Sendable {
     let builder = FakeAXRuntimeBuilder()
     let app: AXUIElement
     let windowsAddedOnSlotPress: MutableBox<[AXUIElement]>
+    let openPresses = MutableBox<Int>(0)
+    let listPressed = MutableBox<Bool>(false)
     let runtime: AXLogicProElements.Runtime
 
     init(
@@ -49,7 +51,6 @@ private final class LiveFixture: @unchecked Sendable {
         otherTracks: Int = 0,
         duplicateTrackNameAt: Int? = nil,
         emptyInsertChain: Bool = false,
-        pluginWindowRejectsDirectDemotion: Bool = false,
         slotPressReturnsFalse: Bool = false
     ) {
         let b = builder
@@ -86,6 +87,7 @@ private final class LiveFixture: @unchecked Sendable {
         var strips: [AXUIElement] = []
         var targetSlot: AXUIElement?
         var targetOpenButton: AXUIElement?
+        var targetListButton: AXUIElement?
         for i in 0..<rowCount {
             let strip = b.element(1200 + i)
             b.setAttribute(strip, kAXRoleAttribute as String, kAXLayoutItemRole as String)
@@ -102,6 +104,7 @@ private final class LiveFixture: @unchecked Sendable {
                         if s == insert {
                             targetSlot = slot
                             targetOpenButton = b.element((1300 + s) * 10 + 2)
+                            targetListButton = b.element((1300 + s) * 10 + 3)
                         }
                         slots.append(slot)
                     }
@@ -137,8 +140,10 @@ private final class LiveFixture: @unchecked Sendable {
         b.setAttribute(pluginWindow, kAXSubroleAttribute as String, kAXDialogSubrole as String)
         b.setAttribute(pluginWindow, kAXTitleAttribute as String, trackName)
         b.setAttribute(pluginWindow, kAXCloseButtonAttribute as String, pluginClose)
-        b.setAttribute(pluginWindow, kAXMainAttribute as String, pluginWindowPresent)
-        b.setAttribute(pluginWindow, kAXFocusedAttribute as String, pluginWindowPresent)
+        // Measured live 2026-09-18: Logic never reports a plugin window as main
+        // or focused after its "open" button raised it.
+        b.setAttribute(pluginWindow, kAXMainAttribute as String, false)
+        b.setAttribute(pluginWindow, kAXFocusedAttribute as String, false)
         b.setChildren(pluginWindow, [pluginBypass, pluginLink, slider])
 
         let windows = pluginWindowPresent ? [arrangeWindow, pluginWindow] : [arrangeWindow]
@@ -152,16 +157,14 @@ private final class LiveFixture: @unchecked Sendable {
         let sliderKey = b.elementID(slider)
         let targetSlotKey = targetSlot.map { b.elementID($0) }
         let targetOpenButtonKey = targetOpenButton.map { b.elementID($0) }
+        let targetListButtonKey = targetListButton.map { b.elementID($0) }
+        let openPresses = self.openPresses
+        let listPressed = self.listPressed
+        let canOpen = openWindowOnSlotPress || pluginWindowPresent
         let forced = forcedAfterValue
         let runtime = b.makeLogicRuntime(
             appElement: app,
             setAttributeHandler: { [b] el, attribute, value in
-                if pluginWindowRejectsDirectDemotion,
-                   b.elementID(el) == b.elementID(pluginWindow),
-                   attribute == (kAXMainAttribute as String) || attribute == (kAXFocusedAttribute as String),
-                   (value as? NSNumber)?.boolValue == false {
-                    return true
-                }
                 guard b.elementID(el) == sliderKey, attribute == (kAXValueAttribute as String) else {
                     b.setAttribute(el, attribute, value)
                     return true
@@ -173,32 +176,31 @@ private final class LiveFixture: @unchecked Sendable {
                 return true
             },
             performActionHandler: { [b] el, action in
-                if pluginWindowRejectsDirectDemotion,
-                   b.elementID(el) == b.elementID(arrangeWindow),
-                   action == (kAXRaiseAction as String) {
-                    b.setAttribute(pluginWindow, kAXMainAttribute as String, false)
-                    b.setAttribute(pluginWindow, kAXFocusedAttribute as String, false)
-                    return true
-                }
                 guard action == (kAXPressAction as String) else {
                     return true
                 }
                 let key = b.elementID(el)
-                guard key == targetSlotKey || key == targetOpenButtonKey else {
+                if key == targetListButtonKey {
+                    listPressed.value = true            // would open the plug-in chooser
                     return true
                 }
-                if openWindowOnSlotPress {
-                    b.setAttribute(
-                        app,
-                        kAXWindowsAttribute as String,
-                        [arrangeWindow, pluginWindow] + windowsAddedOnSlotPress.value
-                    )
+                guard key == targetOpenButtonKey else {
+                    return true                          // the slot group itself does nothing
                 }
-                b.setAttribute(pluginWindow, kAXMainAttribute as String, true)
-                b.setAttribute(pluginWindow, kAXFocusedAttribute as String, true)
-                // Model real Logic 12.3: the slot/open-control AXPress opens the
-                // window but reports a NON-ZERO AX status. The observed-window
-                // poll must succeed regardless of this return.
+                openPresses.value += 1
+                // Measured live 2026-09-18: "open" TOGGLES the window in and out
+                // of Logic's window list and never makes it main or focused.
+                var windows = (b.attributeValue(app, kAXWindowsAttribute as String) as? [AXUIElement]) ?? []
+                if windows.contains(where: { CFEqual($0, pluginWindow) }) {
+                    let added = windowsAddedOnSlotPress.value
+                    windows.removeAll { window in
+                        CFEqual(window, pluginWindow) || added.contains { CFEqual($0, window) }
+                    }
+                } else if canOpen {
+                    windows += [pluginWindow] + windowsAddedOnSlotPress.value
+                }
+                b.setAttribute(app, kAXWindowsAttribute as String, windows)
+                // Real Logic 12.3 reports a NON-ZERO AX status for a press that acts.
                 return !slotPressReturnsFalse
             }
         )
@@ -211,9 +213,12 @@ private final class LiveFixture: @unchecked Sendable {
         let group = b.element(id)
         let bypass = b.element(id * 10 + 1)
         let open = b.element(id * 10 + 2)
+        let list = b.element(id * 10 + 3)
         b.setAttribute(group, kAXRoleAttribute as String, kAXGroupRole as String)
         b.setAttribute(group, kAXDescriptionAttribute as String, name)
-        b.setChildren(group, [bypass, open])
+        b.setChildren(group, [bypass, open, list])
+        b.setAttribute(list, kAXRoleAttribute as String, kAXButtonRole as String)
+        b.setAttribute(list, kAXDescriptionAttribute as String, "list")
         b.setAttribute(bypass, kAXRoleAttribute as String, kAXCheckBoxRole as String)
         b.setAttribute(bypass, kAXDescriptionAttribute as String, "바이패스")
         b.setAttribute(bypass, kAXValueAttribute as String, 0)
@@ -582,6 +587,8 @@ private func runChannelEQFixture(
     #expect(obj["state"] as? String == "A")
     #expect(obj["observed_normalized"] as? Double == 60)
     #expect(fixture.currentSliderValue == 60)
+    #expect(fixture.openPresses.value == 1)             // opened; not main, still found
+    #expect(isFalseFact(fixture.listPressed.value))
 }
 
 @Test func testOpenerReachesStateAWhenSlotPressReturnsFalseButWindowOpens() async {
@@ -590,7 +597,7 @@ private func runChannelEQFixture(
     // reporting a NON-ZERO AX status. The old loop did `guard pressElement …
     // else { continue }`, skipping the observed-window poll on that false
     // return, so the window that DID open was never claimed → window_open_failed.
-    // The fix consults `pollOpenPluginWindow` regardless of the press return; the
+    // The fix polls the window list regardless of the press return; the
     // op MUST now reach State A.
     let fixture = LiveFixture(
         beforeValue: 51,
@@ -620,15 +627,22 @@ private func runChannelEQFixture(
     #expect(obj["error"] as? String == "window_open_failed")
     #expect(!((obj["write_attempted"] as? Bool)!))
     #expect(fixture.currentSliderValue == 51)
+    #expect(isFalseFact(fixture.listPressed.value))         // a dead "open" never escalates to "list"
 }
 
-@Test func testManualPreopenFallsBackToRaisingArrangeWhenFocusedCannotBeClearedDirectly() async {
-    let fixture = LiveFixture(beforeValue: 51, pluginWindowRejectsDirectDemotion: true)
+@Test func testPreopenedWindowIsClosedByTheToggleAndReopenedNeverViaList() async {
+    // Live 2026-09-18: with the window already open, "open" closed it. The old
+    // ladder then pressed the slot and its "list" button, which opens the
+    // plug-in chooser; now a press that closes our window is answered by one
+    // more press of "open".
+    let fixture = LiveFixture(beforeValue: 51, pluginWindowPresent: true)
     let obj = await runLive(fixture: fixture, params: thresholdParams())
 
     #expect(obj["state"] as? String == "A")
     #expect(obj["observed_normalized"] as? Double == 60)
     #expect(fixture.currentSliderValue == 60)
+    #expect(fixture.openPresses.value == 2)
+    #expect(isFalseFact(fixture.listPressed.value))
 }
 
 @Test func testProductionOpenerRejectsOpenedWindowWithoutRequestedSlider() async throws {
@@ -1011,14 +1025,13 @@ private final class OneShotStickyFixture: @unchecked Sendable {
         b.setAttribute(pluginLink, kAXRoleAttribute as String, kAXCheckBoxRole as String)
         b.setAttribute(pluginLink, kAXDescriptionAttribute as String, "link")
         b.setAttribute(pluginWindow, kAXCloseButtonAttribute as String, pluginClose)
-        b.setAttribute(pluginWindow, kAXMainAttribute as String, true)
-        b.setAttribute(pluginWindow, kAXFocusedAttribute as String, true)
         b.setChildren(pluginWindow, [pluginBypass, pluginLink, slider])
 
         b.setAttribute(app, kAXWindowsAttribute as String, [arrangeWindow, pluginWindow])
         b.setAttribute(app, kAXMainWindowAttribute as String, arrangeWindow)
 
         let sliderKey = b.elementID(slider)
+        let targetOpenKey = b.elementID(b.element(3306 * 10 + 2))
         let counter = writeCount
         self.runtime = b.makeLogicRuntime(
             appElement: app,
@@ -1034,11 +1047,14 @@ private final class OneShotStickyFixture: @unchecked Sendable {
                 b.setAttribute(el, kAXValueDescriptionAttribute as String, "\(Int(landed.rounded())) %")
                 return true
             },
-            performActionHandler: { [b] _, action in
-                guard action == (kAXPressAction as String) else { return true }
-                b.setAttribute(pluginWindow, kAXMainAttribute as String, true)
-                b.setAttribute(pluginWindow, kAXFocusedAttribute as String, true)
-                return true
+            performActionHandler: { [b] el, action in
+                // The target insert's "open" toggles its window (measured live).
+                guard action == (kAXPressAction as String), b.elementID(el) == targetOpenKey else { return true }
+                let windows = (b.attributeValue(app, kAXWindowsAttribute as String) as? [AXUIElement]) ?? []
+                let isOpen = windows.contains { CFEqual($0, pluginWindow) }
+                b.setAttribute(app, kAXWindowsAttribute as String,
+                               isOpen ? [arrangeWindow] : [arrangeWindow, pluginWindow])
+                return false
             }
         )
     }

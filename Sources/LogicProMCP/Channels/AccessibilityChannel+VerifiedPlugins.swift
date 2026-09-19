@@ -1181,89 +1181,27 @@ extension AccessibilityChannel {
         )
     }
 
+    /// Open THIS slot's editor window by provenance, then check it carries the
+    /// control about to be written. Shares load_preset's acquisition, built on
+    /// what was measured live 2026-09-18: the slot's "open" button is a toggle,
+    /// the window it opens is never main/focused, and the slot's "list" button
+    /// opens the plug-in chooser — so only "open" is ever pressed, and the
+    /// window is the one that appears in Logic's window list.
     private static func openPluginWindowFromTargetSlot(
         _ targetSlot: AXUIElement,
         trackName: String,
         axDescription: String,
         runtime: AXLogicProElements.Runtime
     ) async -> AXUIElementSendable? {
-        switch AXLogicProElements.pluginWindowMatch(
-            forTrackName: trackName,
-            matchingSliderDescription: axDescription,
-            runtime: runtime
-        ) {
-        case .ambiguous:
+        let acquisition = await acquirePluginWindowBySlot(targetSlot, trackName: trackName, runtime: runtime)
+        guard let window = acquisition.window else {
+            _ = dismissStrayMenu(runtime: runtime)
             return nil
-        case let .unique(window):
-            guard demotePluginWindowBeforeAcquisition(window, runtime: runtime) else {
-                return nil
-            }
-        case .none:
-            break
         }
-
-        let rankedControls = rankedPluginSlotOpenControls(in: targetSlot, runtime: runtime.ax)
-        let attempts = rankedControls.filter { $0.rank == 0 }.map(\.element)
-            + [targetSlot]
-            + rankedControls.filter { $0.rank != 0 }.map(\.element)
-        for element in attempts {
-            // Fire AXPress but IGNORE its return code, then consult the observed
-            // window poll REGARDLESS of that return. On real Logic 12.3 an AXPress
-            // that actually opens the plugin window can still report a NON-ZERO AX
-            // status; gating the poll on the return (the former `guard … else
-            // continue`) skips past a control that DID open the window. Honest-
-            // contract: trust the OBSERVED window, not the unreliable return —
-            // only advance to the next ranked control if the poll shows no window.
-            _ = pressElement(element, runtime: runtime.ax)
-            switch await pollOpenPluginWindow(
-                trackName: trackName,
-                axDescription: axDescription,
-                runtime: runtime,
-                timeoutMs: 1_250
-            ) {
-            case let .unique(window):
-                guard pluginWindowIsFront(window, runtime: runtime.ax) else {
-                    return nil
-                }
-                return AXUIElementSendable(window)
-            case .ambiguous:
-                return nil
-            case .none:
-                continue
-            }
-        }
-        return nil
-    }
-
-    static func demotePluginWindowBeforeAcquisition(
-        _ window: AXUIElement,
-        runtime: AXLogicProElements.Runtime
-    ) -> Bool {
-        let mainCleared = AXHelpers.setAttribute(
-            window, kAXMainAttribute as String, false as CFTypeRef, runtime: runtime.ax
-        )
-        let focusCleared = AXHelpers.setAttribute(
-            window, kAXFocusedAttribute as String, false as CFTypeRef, runtime: runtime.ax
-        )
-        if mainCleared, focusCleared, !pluginWindowIsFront(window, runtime: runtime.ax) {
-            return true
-        }
-        guard let arrangeWindow = AXLogicProElements.mainWindow(runtime: runtime),
-              AXHelpers.performAction(arrangeWindow, kAXRaiseAction as String, runtime: runtime.ax) else { return false }
-        return !pluginWindowIsFront(window, runtime: runtime.ax)
-    }
-
-    static func pluginWindowIsFront(
-        _ window: AXUIElement,
-        runtime: AXHelpers.Runtime
-    ) -> Bool {
-        let isMain: NSNumber? = AXHelpers.getAttribute(
-            window, kAXMainAttribute, runtime: runtime
-        )
-        let isFocused: NSNumber? = AXHelpers.getAttribute(
-            window, kAXFocusedAttribute, runtime: runtime
-        )
-        return isMain?.boolValue == true || isFocused?.boolValue == true
+        guard AXLogicProElements.pluginWindowSlider(
+            in: window, axDescription: axDescription, runtime: runtime.ax
+        ) != nil else { return nil }
+        return AXUIElementSendable(window)
     }
 
     private static func targetPluginIdentityIsStable(
@@ -1311,40 +1249,10 @@ extension AccessibilityChannel {
         .sorted { lhs, rhs in lhs.rank < rhs.rank }
     }
 
-    private static func pollOpenPluginWindow(
-        trackName: String,
-        axDescription: String,
-        runtime: AXLogicProElements.Runtime,
-        timeoutMs: Int
-    ) async -> AXLogicProElements.PluginWindowMatch {
-        let deadline = Date().addingTimeInterval(Double(timeoutMs) / 1_000.0)
-        var lastUniqueWindow: AXUIElement?
-        repeat {
-            switch AXLogicProElements.pluginWindowMatch(
-                forTrackName: trackName,
-                matchingSliderDescription: axDescription,
-                runtime: runtime
-            ) {
-            case let .unique(window):
-                lastUniqueWindow = window
-            case .ambiguous:
-                return .ambiguous
-            case .none:
-                lastUniqueWindow = nil
-            }
-            guard Date() < deadline else { break }
-            try? await Task.sleep(for: .milliseconds(100))
-        } while Date() < deadline
-        if let lastUniqueWindow {
-            return .unique(lastUniqueWindow)
-        }
-        return .none
-    }
-
     /// ADR-001 coordinate ban: open the plugin window from its slot control via
     /// AXPress only. The former element-derived `clickElementCenter` fallback is
     /// removed; `openPluginWindowFromTargetSlot` fails closed (`window_open_failed`)
-    /// when no ranked control responds to AXPress, never a coordinate click.
+    /// when the slot's "open" button raises no window, never a coordinate click.
     static func pressElement(_ element: AXUIElement, runtime: AXHelpers.Runtime) -> Bool {
         AXHelpers.performAction(element, kAXPressAction as String, runtime: runtime)
     }
