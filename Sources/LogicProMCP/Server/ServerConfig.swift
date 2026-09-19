@@ -45,6 +45,33 @@ struct ServerConfig: Sendable {
     // drift fixed in v3.1.2 P2.)
     static let statePollingIntervalNs: UInt64 = 3_000_000_000 // 3 seconds
 
+    /// When the state cache is refreshed.
+    ///
+    /// `onDemand` (default since 2026-09-19): no background loop — Batuta sends
+    /// Logic no Accessibility requests unless a tool call or resource read asks
+    /// for something, and then refreshes the cache once just before handling it.
+    /// Why: Logic 12.3.1 aborted mid-recording (2026-09-19 04:46, uncaught
+    /// Objective-C exception rethrown in -[NSApplication _handleEvent:]) while
+    /// the crash report's voucher named LogicProMCPAXHelper and no command had
+    /// been sent for 20 minutes — the 3-second poll was the only traffic. AX
+    /// reads land on Logic's main thread; reading a strip or header that Logic
+    /// is rebuilding (tracks being created, a take being recorded) can make
+    /// Logic's own accessibility code throw. Strong evidence, not proof.
+    ///
+    /// `background` restores the 3-second loop: LOGIC_MCP_STATE_POLL=background.
+    enum StatePollMode: String {
+        case onDemand = "on_demand"
+        case background
+    }
+
+    static var statePollMode: StatePollMode {
+        StatePollMode(rawValue: ProcessInfo.processInfo.environment["LOGIC_MCP_STATE_POLL"] ?? "") ?? .onDemand
+    }
+
+    /// On-demand refreshes this close together reuse the previous one, so a
+    /// burst of calls does not multiply the reads.
+    static let onDemandRefreshReuseNs: UInt64 = 1_000_000_000
+
     // MARK: - Enterprise Safety
     /// Channels that report `manual_validation_required` are not considered
     /// execution-ready in enterprise mode and must not be used for routing.

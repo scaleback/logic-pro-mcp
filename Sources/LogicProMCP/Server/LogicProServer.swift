@@ -1117,6 +1117,7 @@ actor LogicProServer {
         dialogPresent: @escaping @Sendable () -> Bool = { AXLogicProElements.dialogPresent() }
     ) async {
         let handlers = makeHandlers(dialogPresent: dialogPresent)
+        let poller = self.poller
         await server.withMethodHandler(ListTools.self) { params in
             if let error = Self.invalidCursorError(params.cursor, method: "tools/list") { throw error }
             return await handlers.listTools(params)
@@ -1127,6 +1128,7 @@ actor LogicProServer {
             if let error = Self.toolCallProtocolError(name: params.name, arguments: params.arguments) {
                 throw error
             }
+            if ServerConfig.statePollMode == .onDemand { await poller.refreshIfStale() }
             return await handlers.callTool(params)
         }
     }
@@ -1136,13 +1138,15 @@ actor LogicProServer {
     private func registerResources() async {
         let handlers = makeHandlers()
         let subscriptions = self.resourceSubscriptions
+        let poller = self.poller
         await server.withMethodHandler(ListResources.self) { params in
             if let error = Self.invalidCursorError(params.cursor, method: "resources/list") { throw error }
             return await handlers.listResources(params)
         }
 
         await server.withMethodHandler(ReadResource.self) { params in
-            try await handlers.readResource(params)
+            if ServerConfig.statePollMode == .onDemand { await poller.refreshIfStale() }
+            return try await handlers.readResource(params)
         }
 
         await server.withMethodHandler(ListResourceTemplates.self) { params in
@@ -1297,8 +1301,10 @@ actor LogicProServer {
             startPoller: {
                 if let startPoller = self.runtimeOverrides?.startPoller {
                     await startPoller()
-                } else {
+                } else if ServerConfig.statePollMode == .background {
                     await poller.start()
+                } else {
+                    Log.info("StatePoller on demand: no background polling (LOGIC_MCP_STATE_POLL=background restores it)", subsystem: "poller")
                 }
             },
             registerHandlers: {

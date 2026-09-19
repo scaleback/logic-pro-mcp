@@ -140,6 +140,30 @@ actor StatePoller {
         await pollOnce(axChannel: axChannel, cache: cache)
     }
 
+    private var lastOnDemandRefresh: ContinuousClock.Instant?
+    private var inFlightOnDemandRefresh: Task<Void, Never>?
+
+    /// On-demand mode (see `ServerConfig.StatePollMode`): one poll cycle before a
+    /// call is handled, unless one is running (join it) or finished less than
+    /// `reuseNs` ago.
+    func refreshIfStale(reuseNs: UInt64 = ServerConfig.onDemandRefreshReuseNs) async {
+        if let running = inFlightOnDemandRefresh {
+            await running.value
+            return
+        }
+        if let last = lastOnDemandRefresh,
+           ContinuousClock.now - last < .nanoseconds(Int64(clamping: reuseNs)) {
+            return
+        }
+        let refresh = Task { [axChannel, cache] in
+            await self.pollOnce(axChannel: axChannel, cache: cache)
+        }
+        inFlightOnDemandRefresh = refresh
+        await refresh.value
+        inFlightOnDemandRefresh = nil
+        lastOnDemandRefresh = ContinuousClock.now
+    }
+
     private func pollLoop(axChannel: any AccessibilityChannelProtocol, cache: StateCache) async {
         let intervalNs = ServerConfig.statePollingIntervalNs
 
