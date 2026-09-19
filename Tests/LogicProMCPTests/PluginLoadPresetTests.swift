@@ -258,6 +258,96 @@ private final class PresetFixture: @unchecked Sendable {
     }
 }
 
+// MARK: - scan_plugin_presets, targeted (same fixture: same window and menu)
+
+extension PresetFixture {
+    /// Live Logic exposes a folder's submenu as an AXMenu child before it is
+    /// opened; that is how the scan's walker tells folders from presets.
+    func exposeClaudeSubmenu() { b.setChildren(b.element(8), [b.element(9)]) }
+
+    func scan(plugin: String = "Compressor") async -> ChannelResult {
+        await AccessibilityChannel.runLivePluginPresetScan(
+            runtime: runtime, settleMs: 0,
+            target: .init(track: 0, insert: 0, plugin: plugin),
+            activateLogic: { [activations] in activations.value += 1; return true },
+            windowTimeoutMs: 300
+        )
+    }
+}
+
+/// Every node path in a scan result (the encoder escapes "/", so decode).
+private func scannedPaths(_ result: ChannelResult) -> Set<String> {
+    guard let data = result.message.data(using: .utf8),
+          let cache = try? JSONDecoder().decode(PluginPresetCache.self, from: data) else { return [] }
+    var paths = Set<String>()
+    func visit(_ node: PluginPresetNode) {
+        paths.insert(node.path)
+        node.children.forEach(visit)
+    }
+    visit(cache.root)
+    return paths
+}
+
+@Suite("scan_plugin_presets targeted")
+struct PluginScanPresetsTargetedTests {
+    @Test("lists one insert's Setting menu, folders included, and loads nothing")
+    func listsWithoutLoading() async {
+        let f = PresetFixture(popupValue: "Prueba Claude threshold -31.5")   // a loaded preset's name
+        f.exposeClaudeSubmenu()
+        let result = await f.scan()
+        #expect(result.isSuccess)
+        #expect(result.message.contains("\"pluginName\":\"Compressor\""))
+        let paths = scannedPaths(result)
+        #expect(paths.contains("Claude/Prueba"))
+        #expect(paths.contains("Claude/Otra"))
+        #expect(paths.contains("Recall Default"))
+        #expect(f.pressedLeaves.value.isEmpty)       // walking never presses a preset
+        #expect(f.openPresses.value == 1)
+        #expect(isFalseFact(f.listPressed.value))
+
+        // Why the target exists: the legacy scan looks for a popup reading
+        // "Preset"/"Default" and finds nothing once a preset is loaded.
+        let legacy = await AccessibilityChannel.runLivePluginPresetScan(runtime: f.runtime, settleMs: 0)
+        #expect(!legacy.isSuccess)
+        #expect(legacy.message.contains("No plugin window with Setting dropdown found"))
+    }
+
+    @Test("the wrong plugin in the insert is refused before any window opens")
+    func wrongPluginRefused() async {
+        let f = PresetFixture(slotPlugin: "ChromaVerb")
+        let result = await f.scan(plugin: "Compressor")
+        #expect(!result.isSuccess)
+        #expect(result.message.contains("holds 'ChromaVerb', not 'Compressor'"))
+        #expect(f.openPresses.value == 0)
+        #expect(f.activations.value == 0)
+    }
+
+    @Test("Side Chain and the Apple menu are never taken for the Setting menu")
+    func fingerprintHolds() async {
+        let f = PresetFixture(appleMenuInMenuBar: true, sideChainPopupFirst: true)
+        f.exposeClaudeSubmenu()
+        let result = await f.scan()
+        #expect(result.isSuccess)
+        #expect(result.message.contains("Recall Default"))
+        #expect(!result.message.contains("About This Mac"))
+        #expect(!result.message.contains("Bus 1"))
+    }
+
+    @Test("an already-open window is reopened, and a dead 'open' fails closed")
+    func windowStates() async {
+        let open = PresetFixture(windowInitiallyOpen: true)
+        open.exposeClaudeSubmenu()
+        #expect(await open.scan().isSuccess)
+        #expect(open.openPresses.value == 2)
+
+        let dead = PresetFixture(openHasNoEffect: true)
+        let result = await dead.scan()
+        #expect(!result.isSuccess)
+        #expect(result.message.contains("did not open (no_new_window"))
+        #expect(isFalseFact(dead.listPressed.value))
+    }
+}
+
 /// Under this repo's swift-testing 0.99.0 + Swift 6.4, `#expect(a == b)` never
 /// fails when the operands are Bool (measured 2026-09-18: `t == false`,
 /// `t == f`, `opt as? Bool == false` all pass). Bool facts are therefore

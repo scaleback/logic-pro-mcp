@@ -443,8 +443,13 @@ package actor AccessibilityChannel: AccessibilityChannelProtocol {
             pluginScanInProgress = true
             defer { pluginScanInProgress = false }
             let settleMs = Int(params["submenuOpenDelayMs"] ?? "250") ?? 250
+            var target: AccessibilityChannel.PresetScanTarget?
+            if let track = Int(params["track"] ?? ""), let insert = Int(params["insert"] ?? ""),
+               let plugin = params["plugin"], !plugin.isEmpty {
+                target = .init(track: track, insert: insert, plugin: plugin)
+            }
             return await AccessibilityChannel.runLivePluginPresetScan(
-                runtime: runtime.logicRuntime, settleMs: settleMs
+                runtime: runtime.logicRuntime, settleMs: settleMs, target: target
             )
         case "track.set_instrument":
             // #135/#141/#222 — wire a cache-backed pre-resolver. A Panel cache

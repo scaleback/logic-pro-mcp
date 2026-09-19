@@ -206,7 +206,7 @@ struct OperationCatalogTests {
         .tracksSetInstrument: ["category", "path", "preset"],
         .tracksScanLibrary: ["mode"],
         .tracksResolvePath: ["path"],
-        .tracksScanPluginPresets: ["submenuOpenDelayMs"],
+        .tracksScanPluginPresets: ["insert", "plugin", "submenuOpenDelayMs", "track"],
     ]
 
     private static func expectedAllowedParams(for spec: OperationSpec) -> Set<String> {
@@ -266,6 +266,11 @@ struct OperationCatalogTests {
             params["enabled"] = .bool(true)
         case .tracksSetAutomation:
             params["mode"] = .string("read")
+        case .tracksScanPluginPresets:
+            // Read-only: the track selector travels with the insert and the
+            // plugin it must hold (all three or none).
+            params["insert"] = .int(0)
+            params["plugin"] = .string("Compressor")
         case .tracksSetInstrument:
             params["path"] = .string("/tmp/selector-probe.patch")
             params[OperationRegistry.corroborationParam] = .string("Track \(value)")
@@ -555,11 +560,11 @@ struct OperationCatalogTests {
         }
 
         #expect(advertised.filter { $0.1 == "index" }.count == 17)
-        #expect(advertised.filter { $0.1 == "track" }.count == 17)
-        #expect(advertised.count == 34)
+        #expect(advertised.filter { $0.1 == "track" }.count == 18)
+        #expect(advertised.count == 35)
         #expect(probes.filter { $0.1 == "index" }.count == 16)
-        #expect(probes.filter { $0.1 == "track" }.count == 13)
-        #expect(probes.count == 29)
+        #expect(probes.filter { $0.1 == "track" }.count == 14)
+        #expect(probes.count == 30)
         #expect(Self.selectorsRequiringLiveQualificationByOperation.values.reduce(0) { $0 + $1.count } == 5)
         #expect(
             Set(Self.selectorLiveQualificationReasonByOperation.keys)
@@ -813,7 +818,7 @@ struct OperationCatalogTests {
             $0.target == .acceptsStableTarget
         }.map(\.id))
         #expect(actualIndex.count == 17)
-        #expect(actualTrack.count == 17)
+        #expect(actualTrack.count == 18)
         #expect(actualTargetRef == targetBearing)
         #expect(actualTargetRef.count == 15)
         for spec in OperationRegistry.specs {

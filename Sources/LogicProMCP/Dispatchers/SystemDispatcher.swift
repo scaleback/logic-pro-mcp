@@ -1804,7 +1804,7 @@ struct SystemDispatcher: OperationTraceDispatching {
                   list_library      -> {} — Read currently visible Library columns
                   scan_library      -> { mode?: "ax"|"disk"|"both" } — disk (default) dedupes user/app-bundle Instrument .patch candidates; ax runs legacy live Panel scan; both returns diff
                   resolve_path      -> { path: String } — Cache-backed Library lookup
-                  scan_plugin_presets -> { submenuOpenDelayMs?: Int } — Focused plugin Setting-menu scan
+                  scan_plugin_presets -> { track: Int, insert: Int, plugin: String, submenuOpenDelayMs?: Int } — one insert's Setting-menu presets (all three or none; none = legacy focused-window scan)
 
                 Read state via resources: logic://tracks, logic://tracks/{index}
                 """

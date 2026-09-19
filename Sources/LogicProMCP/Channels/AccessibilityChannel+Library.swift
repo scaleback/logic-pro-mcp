@@ -50,6 +50,64 @@ extension AccessibilityChannel {
         }
     }
 
+    // MARK: - plugin.scan_presets, targeted (track + insert + plugin)
+
+    struct PresetScanTarget: Sendable, Equatable {
+        let track: Int
+        let insert: Int
+        let plugin: String
+    }
+
+    struct PresetScanRefusal: Error {
+        let message: String
+    }
+
+    /// The Setting menu of ONE insert, reached the way load_preset reaches it:
+    /// the insert must hold the named plugin, its window is the one its "open"
+    /// button raises (a toggle; the window is never main), and the menu is
+    /// recognized by its contents, not by the popup's value. Read-only apart
+    /// from opening the window and the menu.
+    static func openTargetedSettingMenu(
+        _ target: PresetScanTarget,
+        app: AXUIElement,
+        settleMs: Int,
+        runtime: AXLogicProElements.Runtime,
+        activateLogic: @Sendable () -> Bool,
+        windowTimeoutMs: Int
+    ) async -> Result<(menu: AXUIElement, plugin: String), PresetScanRefusal> {
+        guard let mixer = AXLogicProElements.getMixerArea(runtime: runtime) else {
+            return .failure(.init(message: "The mixer is not visible, so insert \(target.insert) cannot be located. Show the mixer and retry."))
+        }
+        let strips = AXLogicProElements.mixerChannelStrips(in: mixer, runtime: runtime.ax)
+        guard strips.indices.contains(target.track) else {
+            return .failure(.init(message: "Track \(target.track) is not in the visible mixer (\(strips.count) strips)."))
+        }
+        let slots = AXLogicProElements.audioPluginInsertSlots(in: strips[target.track], runtime: runtime.ax)
+        guard slots.indices.contains(target.insert), slots[target.insert].occupied else {
+            return .failure(.init(message: "Insert \(target.insert) of track \(target.track) is empty or out of range (\(slots.count) slots)."))
+        }
+        guard let observed = slots[target.insert].name, pluginNamesMatch(observed, target.plugin) else {
+            let seen = slots[target.insert].name.map { "'\($0)'" } ?? "an unreadable name"
+            return .failure(.init(message: "Insert \(target.insert) holds \(seen), not '\(target.plugin)'. Nothing was opened."))
+        }
+        guard let trackName = AXLogicProElements.trackName(at: target.track, runtime: runtime) else {
+            return .failure(.init(message: "The name of track \(target.track) could not be read to match its plugin window."))
+        }
+        _ = activateLogic()
+        let acquisition = await acquirePluginWindowBySlot(
+            slots[target.insert].element, trackName: trackName, runtime: runtime, timeoutMs: windowTimeoutMs
+        )
+        guard let window = acquisition.window else {
+            _ = dismissStrayMenu(runtime: runtime)
+            return .failure(.init(message: "The window of '\(observed)' did not open (\(acquisition.outcome), \(acquisition.presses) press(es) of its \"open\" button)."))
+        }
+        let (setting, rejected) = await openSettingMenu(in: window, app: app, settleMs: settleMs, runtime: runtime.ax)
+        guard let setting else {
+            return .failure(.init(message: "No popup in the '\(observed)' window opened a menu with both 'Save As…' and 'Recall Default' (\(rejected.count) popup(s) tried)."))
+        }
+        return .success((setting.menu, observed))
+    }
+
     // MARK: - F2 plugin.scan_presets minimal handler (T0 verdict MIXED)
 
     /// Production `plugin.scan_presets` path — relies on currently-focused plugin
@@ -60,52 +118,74 @@ extension AccessibilityChannel {
     /// identity gate) is follow-up.
     static func runLivePluginPresetScan(
         runtime: AXLogicProElements.Runtime,
-        settleMs: Int = 250
+        settleMs: Int = 250,
+        target: PresetScanTarget? = nil,
+        activateLogic: @Sendable () -> Bool = { ProcessUtils.activateLogicPro() },
+        windowTimeoutMs: Int = 3_000
     ) async -> ChannelResult {
         // 1. Resolve Logic app root
         guard let appRoot = AXLogicProElements.appRoot(runtime: runtime) else {
             return .error("Logic Pro is not running")
         }
-        // 2. Find focused plugin window (heuristic: has AXPopUpButton with "Preset"/"기본" value)
-        guard let pluginWin = PluginInspector.findFocusedPluginWindowAX(in: appRoot, runtime: runtime.ax) else {
-            return .error("No plugin window with Setting dropdown found. Open an instrument plugin window first.")
-        }
-        // 3. Locate Setting popup
-        guard let popup = PluginInspector.findSettingPopupAX(in: pluginWin, runtime: runtime.ax) else {
-            return .error("Setting popup not found in plugin window")
-        }
-        // 4. Open the menu — AX-only ladder (ADR-001: no CGEvent last-resort).
-        //    AXShowMenu is the canonical popup action per NSAccessibility; AXPress
-        //    is the secondary. T0 verdict (v0.6) said raw AXPress was unreliable,
-        //    so AXShowMenu leads; if neither surfaces the AXMenu within the settle
-        //    window the scan fails closed rather than reaching a coordinate click.
-        var menu: AXUIElement?
-        let axOpenActions = [kAXShowMenuAction, kAXPressAction]
-        for action in axOpenActions {
-            // Fire the action but IGNORE its return code, then poll the AX tree
-            // for the actually-open AXMenu. On real Logic 12.3 the Setting
-            // AXPopUpButton returns a NON-ZERO AX status even when the action
-            // succeeds (AXShowMenu → -25206 actionUnsupported; AXPress → -25204
-            // cannotComplete WHILE the menu still opens). Gating the poll on the
-            // performAction return therefore fails closed on a menu that is in
-            // fact open. Honest-contract: trust the OBSERVED state, not the
-            // unreliable return code — fire, settle, then observe.
-            _ = AXHelpers.performAction(popup, action, runtime: runtime.ax)
-            try? await Task.sleep(nanoseconds: 350_000_000)
-            // The popup's own menu first; the app-wide search skips the menu bar.
-            if let found = childMenu(of: popup, runtime: runtime.ax)
-                ?? PluginInspector.findOpenSettingMenuAX(in: appRoot, runtime: runtime.ax) {
-                menu = found
-                break
+        let menu: AXUIElement
+        var pluginName = "(focused-plugin)"
+        if let target {
+            switch await openTargetedSettingMenu(
+                target, app: appRoot, settleMs: settleMs, runtime: runtime,
+                activateLogic: activateLogic, windowTimeoutMs: windowTimeoutMs
+            ) {
+            case let .failure(refusal):
+                return .error(refusal.message)
+            case let .success(opened):
+                menu = opened.menu
+                pluginName = opened.plugin
             }
-        }
-        // ADR-001 coordinate ban: the Setting popup is opened via the AXShowMenu →
-        // AXPress ladder only (AXShowMenu is the canonical NSAccessibility popup
-        // action and is the primary here). The former element-derived CGEvent
-        // click last-resort is removed; if neither AX action surfaces the menu,
-        // fail closed rather than reaching a coordinate primitive.
-        guard let menu = menu else {
-            return .error("Setting menu did not appear after AXShowMenu/AXPress (or already dismissed)")
+        } else {
+            // LEGACY (no target): the first window whose popup value reads like a
+            // Setting menu. Unreliable once presets are loaded — kept for callers
+            // that pass nothing.
+            // 2. Find focused plugin window (heuristic: has AXPopUpButton with "Preset"/"기본" value)
+            guard let pluginWin = PluginInspector.findFocusedPluginWindowAX(in: appRoot, runtime: runtime.ax) else {
+                return .error("No plugin window with Setting dropdown found. Open an instrument plugin window first.")
+            }
+            // 3. Locate Setting popup
+            guard let popup = PluginInspector.findSettingPopupAX(in: pluginWin, runtime: runtime.ax) else {
+                return .error("Setting popup not found in plugin window")
+            }
+            // 4. Open the menu — AX-only ladder (ADR-001: no CGEvent last-resort).
+            //    AXShowMenu is the canonical popup action per NSAccessibility; AXPress
+            //    is the secondary. T0 verdict (v0.6) said raw AXPress was unreliable,
+            //    so AXShowMenu leads; if neither surfaces the AXMenu within the settle
+            //    window the scan fails closed rather than reaching a coordinate click.
+            var legacyMenu: AXUIElement?
+            let axOpenActions = [kAXShowMenuAction, kAXPressAction]
+            for action in axOpenActions {
+                // Fire the action but IGNORE its return code, then poll the AX tree
+                // for the actually-open AXMenu. On real Logic 12.3 the Setting
+                // AXPopUpButton returns a NON-ZERO AX status even when the action
+                // succeeds (AXShowMenu → -25206 actionUnsupported; AXPress → -25204
+                // cannotComplete WHILE the menu still opens). Gating the poll on the
+                // performAction return therefore fails closed on a menu that is in
+                // fact open. Honest-contract: trust the OBSERVED state, not the
+                // unreliable return code — fire, settle, then observe.
+                _ = AXHelpers.performAction(popup, action, runtime: runtime.ax)
+                try? await Task.sleep(nanoseconds: 350_000_000)
+                // The popup's own menu first; the app-wide search skips the menu bar.
+                if let found = childMenu(of: popup, runtime: runtime.ax)
+                    ?? PluginInspector.findOpenSettingMenuAX(in: appRoot, runtime: runtime.ax) {
+                    legacyMenu = found
+                    break
+                }
+            }
+            // ADR-001 coordinate ban: the Setting popup is opened via the AXShowMenu →
+            // AXPress ladder only (AXShowMenu is the canonical NSAccessibility popup
+            // action and is the primary here). The former element-derived CGEvent
+            // click last-resort is removed; if neither AX action surfaces the menu,
+            // fail closed rather than reaching a coordinate primitive.
+            guard let legacyMenu else {
+                return .error("Setting menu did not appear after AXShowMenu/AXPress (or already dismissed)")
+            }
+            menu = legacyMenu
         }
         // 6. Build live probe + walk
         let probe = PluginInspector.liveMenuProbe(rootMenu: menu, settleMs: settleMs, runtime: runtime.ax)
@@ -116,13 +196,13 @@ extension AccessibilityChannel {
             )
             let durationMs = Int(Date().timeIntervalSince(scanStart) * 1000)
             // 7. Dismiss menu
-            _ = AXUIElementPerformAction(menu, kAXCancelAction as CFString)
+            cancelMenu(menu, runtime: runtime.ax)
             // 8. Compute counts
             let counts = AccessibilityChannel.countNodes(root)
             // 9. Build minimal cache (no persistence in this minimal handler)
             let cache = PluginPresetCache(
                 schemaVersion: 1,
-                pluginName: "(focused-plugin)",
+                pluginName: pluginName,
                 pluginIdentifier: "(unknown — T6 will resolve via AU registry)",
                 pluginVersion: nil,
                 contentHash: "(deferred)",
@@ -145,7 +225,7 @@ extension AccessibilityChannel {
             }
             return .success(s)
         } catch PluginError.menuMutated {
-            _ = AXUIElementPerformAction(menu, kAXCancelAction as CFString)
+            cancelMenu(menu, runtime: runtime.ax)
             return .error("Plugin menu mutated mid-scan; aborted")
         } catch PluginError.focusLost {
             return .error("Logic Pro lost focus mid-scan")

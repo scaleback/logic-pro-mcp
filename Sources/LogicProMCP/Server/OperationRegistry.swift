@@ -964,7 +964,7 @@ enum OperationRegistry {
         (.tracksListLibrary, "list_library", Mutability.readOnly, DeadlineClass.long, VerificationPolicy.none, TargetPolicy.none, []),
         (.tracksScanLibrary, "scan_library", Mutability.readOnly, DeadlineClass.long, VerificationPolicy.none, TargetPolicy.none, ["mode"]),
         (.tracksResolvePath, "resolve_path", Mutability.readOnly, DeadlineClass.short, VerificationPolicy.none, TargetPolicy.none, ["path"]),
-        (.tracksScanPluginPresets, "scan_plugin_presets", Mutability.readOnly, DeadlineClass.long, VerificationPolicy.none, TargetPolicy.none, ["submenuOpenDelayMs"]),
+        (.tracksScanPluginPresets, "scan_plugin_presets", Mutability.readOnly, DeadlineClass.long, VerificationPolicy.none, TargetPolicy.none, ["insert", "plugin", "submenuOpenDelayMs", "track"]),
     ] as [(OperationID, String, Mutability, DeadlineClass, VerificationPolicy, TargetPolicy, Set<String>)]).map { entry in
         OperationSpec(
             id: entry.0,

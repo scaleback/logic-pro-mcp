@@ -165,27 +165,7 @@ extension AccessibilityChannel {
         guard let app = AXLogicProElements.appRoot(runtime: runtime) else {
             return .error(windowOpenFailedStateC(operation, identity, "Logic's application element was not readable"))
         }
-        var rejected: [[String: Any]] = []
-        var setting: (popup: AXUIElement, menu: AXUIElement)?
-        for popup in settingPopupCandidates(in: window, runtime: runtime.ax) {
-            let value = popupValue(popup, runtime: runtime.ax)
-            guard let menu = await openPopupMenu(popup, app: app, settleMs: settleMs, runtime: runtime.ax) else {
-                rejected.append(["popup_value": value ?? NSNull(), "outcome": "no_menu_opened"])
-                continue
-            }
-            if isSettingMenu(menu, runtime: runtime.ax) {
-                setting = (popup, menu)
-                break
-            }
-            rejected.append([
-                "popup_value": value ?? NSNull(), "outcome": "not_the_setting_menu",
-                "first_items": Array(menuItems(menu, runtime: runtime.ax).map(\.title).prefix(6)),
-            ])
-            cancelMenu(menu, runtime: runtime.ax)
-            if let own = childMenu(of: popup, runtime: runtime.ax), !CFEqual(own, menu) {
-                cancelMenu(own, runtime: runtime.ax)
-            }
-        }
+        let (setting, rejected) = await openSettingMenu(in: window, app: app, settleMs: settleMs, runtime: runtime.ax)
         guard let setting else {
             var extras = refusal(operation, identity,
                                  attempted: "open the plugin's Setting menu",
@@ -511,6 +491,38 @@ extension AccessibilityChannel {
             }
         }
         return nil
+    }
+
+    /// Open the plugin window's Setting menu, recognized by what it CONTAINS
+    /// (Save As… + Recall Default), never by the popup's value: that value is
+    /// whatever preset is loaded, and the Compressor alone has three popups.
+    /// Menus that turn out not to be the Setting menu are closed again.
+    static func openSettingMenu(
+        in window: AXUIElement,
+        app: AXUIElement,
+        settleMs: Int,
+        runtime: AXHelpers.Runtime
+    ) async -> (setting: (popup: AXUIElement, menu: AXUIElement)?, rejected: [[String: Any]]) {
+        var rejected: [[String: Any]] = []
+        for popup in settingPopupCandidates(in: window, runtime: runtime) {
+            let value = popupValue(popup, runtime: runtime)
+            guard let menu = await openPopupMenu(popup, app: app, settleMs: settleMs, runtime: runtime) else {
+                rejected.append(["popup_value": value ?? NSNull(), "outcome": "no_menu_opened"])
+                continue
+            }
+            if isSettingMenu(menu, runtime: runtime) {
+                return ((popup, menu), rejected)
+            }
+            rejected.append([
+                "popup_value": value ?? NSNull(), "outcome": "not_the_setting_menu",
+                "first_items": Array(menuItems(menu, runtime: runtime).map(\.title).prefix(6)),
+            ])
+            cancelMenu(menu, runtime: runtime)
+            if let own = childMenu(of: popup, runtime: runtime), !CFEqual(own, menu) {
+                cancelMenu(own, runtime: runtime)
+            }
+        }
+        return (nil, rejected)
     }
 
     static func isSettingMenu(_ menu: AXUIElement, runtime: AXHelpers.Runtime) -> Bool {
