@@ -333,6 +333,24 @@ struct PluginScanPresetsTargetedTests {
         #expect(!result.message.contains("Bus 1"))
     }
 
+    @Test("the Setting menu's own commands come back as actions, not presets")
+    func commandsAreActions() async {
+        let f = PresetFixture()
+        f.exposeClaudeSubmenu()
+        let result = await f.scan()
+        guard let data = result.message.data(using: .utf8),
+              let cache = try? JSONDecoder().decode(PluginPresetCache.self, from: data) else {
+            Issue.record("scan did not return a preset cache"); return
+        }
+        let kinds = Dictionary(uniqueKeysWithValues: cache.root.children.map { ($0.name, $0.kind) })
+        #expect(kinds["Save As…"] == .action)
+        #expect(kinds["Recall Default"] == .action)
+        #expect(kinds["Copy"] == .action)
+        #expect(kinds["Claude"] == .folder)
+        let leaf = cache.root.children.first { $0.name == "Claude" }?.children.first { $0.name == "Prueba" }
+        #expect(leaf?.kind == .leaf)                    // a preset named like nothing special stays a preset
+    }
+
     @Test("an already-open window is reopened, and a dead 'open' fails closed")
     func windowStates() async {
         let open = PresetFixture(windowInitiallyOpen: true)
@@ -412,6 +430,22 @@ struct PluginLoadPresetTests {
         #expect(isFalseFact(obj["write_attempted"]))
         #expect((obj["available_at_level"] as? [String]) == ["Prueba", "Otra"])
         #expect(f.pressedLeaves.value.isEmpty)
+    }
+
+    @Test("a Setting-menu command is never pressed as if it were a preset")
+    func commandIsRefused() async {
+        for command in ["Delete", "Save As…", "Save As...", "recall default", "Copy"] {
+            let f = PresetFixture()
+            let obj = body(await f.run([command]))
+            #expect(obj["state"] as? String == "C")
+            #expect(obj["error"] as? String == "invalid_params")
+            #expect(isFalseFact(obj["write_attempted"]))
+            #expect(f.activations.value == 0)            // refused before Logic is touched
+            #expect(f.openPresses.value == 0)
+        }
+        // A folder named like a command is fine two levels down: only the root holds commands.
+        let nested = PresetFixture(leafTitles: ["Delete", "Otra"])
+        #expect(body(await nested.run(["Claude", "Delete"]))["state"] as? String == "A")
     }
 
     @Test("a repeated leaf title is refused rather than guessed")

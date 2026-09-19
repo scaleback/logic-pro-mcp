@@ -191,9 +191,10 @@ extension AccessibilityChannel {
         let probe = PluginInspector.liveMenuProbe(rootMenu: menu, settleMs: settleMs, runtime: runtime.ax)
         let scanStart = Date()
         do {
-            let (root, cycleCount) = try await PluginInspector.enumerateMenuTree(
+            let (walked, cycleCount) = try await PluginInspector.enumerateMenuTree(
                 probe: probe, maxDepth: maxPluginMenuDepth, settleMs: settleMs
             )
+            let root = markingSettingMenuCommands(walked)
             let durationMs = Int(Date().timeIntervalSince(scanStart) * 1000)
             // 7. Dismiss menu
             cancelMenu(menu, runtime: runtime.ax)

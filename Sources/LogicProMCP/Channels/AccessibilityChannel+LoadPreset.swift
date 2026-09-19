@@ -51,6 +51,11 @@ extension AccessibilityChannel {
                 operation, "missing or invalid 'preset_path' — the Setting-menu path as titles, e.g. [\"Claude\", \"Mi tono\"]"
             ))
         }
+        if path.count == 1, isSettingMenuCommand(path[0]) {
+            return .error(invalidParamsStateC(
+                operation, "'\(path[0])' is a command of the Setting menu, not a preset — load_preset never presses it"
+            ))
+        }
         var identity: [String: Any] = ["track_index": track, "insert": insert, "plugin_requested": plugin]
 
         // 2 — project identity. No MCP tool hands a caller the front document's
@@ -523,6 +528,30 @@ extension AccessibilityChannel {
             }
         }
         return (nil, rejected)
+    }
+
+    /// The Setting menu's own commands, measured live 2026-09-19 (ChromaVerb,
+    /// Logic 12.3.1 EN UI): they sit at the menu's root beside the presets and
+    /// read as plain leaves. Pressing one is not loading a preset — "Delete"
+    /// removes the loaded setting — so load_preset refuses them and the scan
+    /// marks them as actions.
+    static let settingMenuCommandTitles: Set<String> = Set([
+        "Setting", "Undo", "Redo", "Include Plug-in Undo Steps in Project Undo History",
+        "Next", "Previous", "Copy", "Paste", "Load…", "Save", "Save As…",
+        "Save A Copy As…", "Save As Default", "Recall Default", "Delete",
+    ].map(normalizedMenuTitle))
+
+    static func isSettingMenuCommand(_ title: String) -> Bool {
+        settingMenuCommandTitles.contains(normalizedMenuTitle(title))
+    }
+
+    /// The scan's tree with the root-level commands relabeled `.action`.
+    static func markingSettingMenuCommands(_ root: PluginPresetNode) -> PluginPresetNode {
+        PluginPresetNode(name: root.name, path: root.path, kind: root.kind, children: root.children.map { child in
+            child.kind == .leaf && isSettingMenuCommand(child.name)
+                ? PluginPresetNode(name: child.name, path: child.path, kind: .action, children: [])
+                : child
+        })
     }
 
     static func isSettingMenu(_ menu: AXUIElement, runtime: AXHelpers.Runtime) -> Bool {
