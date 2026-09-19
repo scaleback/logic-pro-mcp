@@ -7,8 +7,13 @@
 # certificate root) no cambia y el permiso de Accesibilidad del ayudante y su
 # registro de fondo (BTM) sobreviven al despliegue.
 #
-#   Scripts/deploy-local.sh            compila, firma, verifica, copia
-#   Scripts/deploy-local.sh --no-build solo firma, verifica y copia lo ya compilado
+#   Scripts/deploy-local.sh              compila, firma, verifica, copia
+#   Scripts/deploy-local.sh --no-build   solo firma, verifica y copia lo ya compilado
+#   Scripts/deploy-local.sh --sin-sandbox  TEMPORAL: el servidor sin Batuta.entitlements
+#       (decisión de Edgar 2026-09-19: con sandbox, las guardias del servidor que
+#       leen Accesibilidad directo — nombres de pista — fallan cerradas y bloquean
+#       load_preset; ver ../HANDOFF.md). Volver al sandbox en cuanto esas lecturas
+#       pasen por el ayudante: basta con desplegar SIN esta opción.
 #
 # Si el servidor cambió, al final pide reiniciar Claude; si solo cambió el
 # ayudante, lo reinicia aquí mismo.
@@ -24,21 +29,40 @@ HELPER=LogicProMCPAXHelper
 
 cdhash() { codesign -dvvv "$1" 2>&1 | sed -n 's/^CDHash=//p'; }
 
-if [[ "${1:-}" != "--no-build" ]]; then
+build=1 sandbox=1
+for arg in "$@"; do
+    case "$arg" in
+        --no-build) build=0 ;;
+        --sin-sandbox) sandbox=0 ;;
+        *) echo "opción desconocida: $arg"; exit 2 ;;
+    esac
+done
+
+if (( build )); then
     swift build -c release 2>&1 | tail -1
 fi
 
-codesign --force --options runtime --sign "$IDENTITY" \
-    --identifier com.scaleback.batuta.logicpromcp \
-    --entitlements Batuta.entitlements ".build/release/$SERVER"
+if (( sandbox )); then
+    codesign --force --options runtime --sign "$IDENTITY" \
+        --identifier com.scaleback.batuta.logicpromcp \
+        --entitlements Batuta.entitlements ".build/release/$SERVER"
+else
+    echo "⚠️  SERVIDOR SIN SANDBOX (temporal): sin la garantía de 'sin red'. Para volver: desplegar sin --sin-sandbox."
+    codesign --force --options runtime --sign "$IDENTITY" \
+        --identifier com.scaleback.batuta.logicpromcp ".build/release/$SERVER"
+fi
 codesign --force --options runtime --sign "$IDENTITY" \
     --identifier com.scaleback.batuta.logicpromcp.axhelper \
     ".build/release/$HELPER"
 
 # The server must be sandboxed; the helper must not be (it needs Accessibility).
 codesign --verify --strict ".build/release/$SERVER" ".build/release/$HELPER"
-codesign -d --entitlements - ".build/release/$SERVER" 2>&1 | grep -q app-sandbox \
-    || { echo "ABORTO: el servidor quedó sin sandbox"; exit 1; }
+if (( sandbox )); then
+    codesign -d --entitlements - ".build/release/$SERVER" 2>&1 | grep -q app-sandbox \
+        || { echo "ABORTO: el servidor quedó sin sandbox"; exit 1; }
+elif codesign -d --entitlements - ".build/release/$SERVER" 2>&1 | grep -q app-sandbox; then
+    echo "ABORTO: se pidió --sin-sandbox y el servidor quedó con sandbox"; exit 1
+fi
 if codesign -d --entitlements - ".build/release/$HELPER" 2>&1 | grep -q app-sandbox; then
     echo "ABORTO: el ayudante quedó con sandbox"; exit 1
 fi
