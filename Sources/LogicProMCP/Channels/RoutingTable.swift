@@ -72,6 +72,7 @@ extension ChannelRouter {
         "transport.capture_recording":[.midiKeyCommands, .cgEvent],
 
         // Track state reading
+        "system.blocking_dialog":     [.accessibility],  // server-side guards read it through the helper (sandbox)
         "track.get_tracks":           [.accessibility],
         "track.get_selected":         [.accessibility],
 

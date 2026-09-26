@@ -87,7 +87,11 @@ enum ProjectExportExecutor {
         /// `.live()` wires it to the real AX dialog probe.
         var dialogPresent: @Sendable () -> Bool = { false }
 
-        static func live() -> Options {
+        /// `dialogPresent` comes from the caller because the server is
+        /// sandboxed: its own AX read is always nil, which would let an export
+        /// proceed with a modal on screen. Production passes what the helper
+        /// observed (see `AXFacts`).
+        static func live(dialogPresent: @escaping @Sendable () -> Bool = { false }) -> Options {
             Options(
                 identityReadback: { await AppleScriptChannel.currentDocumentPath() },
                 analyze: { path, policy in AudioAnalyzer.analyzeFile(path: path, policy: policy) },
@@ -97,7 +101,7 @@ enum ProjectExportExecutor {
                 sleep: { try? await Task.sleep(nanoseconds: $0) },
                 minimumDurationSeconds: 0.05,
                 bounceToPath: { artifactPath in await ProjectExportExecutor.runBounceHelper(artifactPath: artifactPath) },
-                dialogPresent: { AXLogicProElements.dialogPresent() }
+                dialogPresent: dialogPresent
             )
         }
     }

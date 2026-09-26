@@ -40,7 +40,10 @@ struct ProjectDispatcher: OperationTraceDispatching {
         // the read-only `audit` so a modal present at audit time surfaces as an
         // export-readiness blocker instead of a false green. Defaults to the same
         // live source the transport path uses; tests inject a fixture.
-        blockingDialogInfo: @escaping @Sendable () -> AXLogicProElements.BlockingDialogInfo? = { AXLogicProElements.blockingDialogInfo() },
+        // Defaults to "not read": the server is sandboxed, so reading AX here
+        // would always be nil anyway. Production passes what the helper saw
+        // (see `AXFacts`); tests inject a fixture.
+        blockingDialogInfo: @escaping @Sendable () -> AXLogicProElements.BlockingDialogInfo? = { nil },
         cleanupAuditFileReader: LogicProjectFileReader.Runtime = .production,
         // #27 Phase 2 — injectable export-execution seams (identity readback,
         // audio analysis, file polling). Defaults to the live wiring; tests

@@ -99,6 +99,14 @@ actor StateCache {
 
     func getTransport() -> TransportState { transport }
     func getTracks() -> [TrackState] { tracks }
+
+    /// Index → name, for the server's synchronous identity guards (see
+    /// `AXFacts`). `TrackState.id` is the 0-based header index, the same key
+    /// `AXLogicProElements.trackNames()` used before those guards stopped
+    /// reading Accessibility themselves.
+    func trackNamesByIndex() -> [Int: String] {
+        Dictionary(tracks.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
+    }
     func getTrack(at index: Int) -> TrackState? {
         guard tracks.indices.contains(index) else { return nil }
         return tracks[index]

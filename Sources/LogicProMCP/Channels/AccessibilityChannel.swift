@@ -360,6 +360,27 @@ package actor AccessibilityChannel: AccessibilityChannelProtocol {
                 params: params, runtime: runtime.logicRuntime
             )
 
+        // MARK: - System reads
+        case "system.blocking_dialog":
+            // The server cannot read this itself: under the App Sandbox its own
+            // AX calls come back nil, which is why this helper exists. Returns
+            // `null` when no blocking dialog owns a Logic window.
+            guard let info = AXLogicProElements.blockingDialogInfo(runtime: runtime.logicRuntime) else {
+                return .success("null")
+            }
+            let payload: [String: Any] = [
+                "title": info.title,
+                "role": info.role,
+                "owning_window": info.owningWindow,
+                "button_titles": info.buttonTitles,
+                "recovery_action": info.recoveryAction,
+            ]
+            guard let data = try? JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys]),
+                  let json = String(data: data, encoding: .utf8) else {
+                return .error("could not encode the blocking dialog")
+            }
+            return .success(json)
+
         // MARK: - Track reads
         case "track.get_tracks":
             // v3.1.8 (Issue #7) — AX-only at the channel layer. The v3.1.5

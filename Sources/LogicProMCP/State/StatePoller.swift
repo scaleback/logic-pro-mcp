@@ -86,16 +86,24 @@ actor StatePoller {
     private let cache: StateCache
     private let runtime: Runtime
     private let postPoll: @Sendable ([ResourceCacheKey]) async -> Void
+    /// Where the server's synchronous guards read what this loop observed.
+    private let facts: AXFacts?
+    /// Production: the helper. Nil in tests, which use `runtime`'s sync closures.
+    private let readBlockingDialog: (@Sendable () async -> AXLogicProElements.BlockingDialogInfo?)?
     private var pollingTask: Task<Void, Never>?
 
     init(
         axChannel: any AccessibilityChannelProtocol,
         cache: StateCache,
+        facts: AXFacts? = nil,
+        readBlockingDialog: (@Sendable () async -> AXLogicProElements.BlockingDialogInfo?)? = nil,
         runtime: Runtime = .production,
         postPoll: @escaping @Sendable ([ResourceCacheKey]) async -> Void = { _ in }
     ) {
         self.axChannel = axChannel
         self.cache = cache
+        self.facts = facts
+        self.readBlockingDialog = readBlockingDialog
         self.runtime = runtime
         self.postPoll = postPoll
     }
@@ -135,6 +143,18 @@ actor StatePoller {
     }
 
     // MARK: - Poll loop
+
+    /// Production reads the blocking dialog THROUGH THE HELPER (the sandboxed
+    /// server's own AX comes back nil); the synchronous `runtime` closures stay
+    /// as the deterministic test seam and are used when no reader is injected.
+    private func blockingDialog() async -> AXLogicProElements.BlockingDialogInfo? {
+        guard let readBlockingDialog else { return runtime.blockingDialogInfo() }
+        return await readBlockingDialog()
+    }
+
+    private func dialogIsPresent(_ dialog: AXLogicProElements.BlockingDialogInfo?) -> Bool {
+        readBlockingDialog == nil ? runtime.dialogPresent() : dialog != nil
+    }
 
     func refreshNow() async {
         await pollOnce(axChannel: axChannel, cache: cache)
@@ -186,6 +206,9 @@ actor StatePoller {
     private func pollOnce(axChannel: any AccessibilityChannelProtocol, cache: StateCache) async {
         var cacheKeys: [ResourceCacheKey] = []
         guard runtime.hasVisibleWindow() else {
+            // No window: nothing read this cycle, so the server's guards must
+            // not keep corroborating against what was read before it vanished.
+            facts?.clear()
             // Be conservative: a single missed window check is often a transient
             // AX query glitch (Logic mid-paint, plugin window briefly grabbing
             // focus). Only flip hasDocument=false after `failureThreshold`
@@ -211,7 +234,8 @@ actor StatePoller {
         // what makes the project/track polls below fail (they occlude the arrange
         // subtree), so we capture it here — before those polls — regardless of
         // their outcome. `nil` when no blocking dialog owns the Logic window.
-        await cache.updateBlockingDialogButtons(runtime.blockingDialogInfo()?.buttonTitles)
+        let dialog = await blockingDialog()
+        await cache.updateBlockingDialogButtons(dialog?.buttonTitles)
 
         let projectReady = await poll(
             operation: "project.get_info", label: "ProjectInfo",
@@ -257,7 +281,8 @@ actor StatePoller {
             // `axOccluded=true` so downstream readers (resource envelope
             // wiring tracked separately) can surface a stale-by-occlusion
             // signal instead of silently returning prior values.
-            if runtime.dialogPresent() {
+            if dialogIsPresent(dialog) {
+                facts?.update(trackNames: nil, blockingDialog: dialog)
                 await cache.updateAXOccluded(true)
                 // Preserve cache: do NOT increment consecutivePollMisses,
                 // do NOT clear hasDocument. fetchedAt timestamps continue
@@ -277,9 +302,14 @@ actor StatePoller {
         }
 
         guard hasDocument else {
+            facts?.update(trackNames: nil, blockingDialog: dialog)
             if !cacheKeys.isEmpty { await postPoll(cacheKeys) }
             return
         }
+        // Published for the server's synchronous guards (see `AXFacts`). Track
+        // names come from the read this cycle already made; `nil` when it failed,
+        // so an unread surface keeps failing closed.
+        facts?.update(trackNames: tracksReady ? await cache.trackNamesByIndex() : nil, blockingDialog: dialog)
 
         let transportReady = await poll(
             operation: "transport.get_state", label: "Transport",

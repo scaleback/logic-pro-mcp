@@ -284,6 +284,9 @@ actor LogicProServer {
     private let keyCommandsChannel: MIDIKeyCommandsChannel
     private let scripterChannel: ScripterChannel
     private let axChannel: any AccessibilityChannelProtocol
+    /// Published by the poller from what the HELPER read; the server's
+    /// synchronous guards read identity and dialogs here (see `AXFacts`).
+    private let axFacts = AXFacts()
     private let cgEventChannel: CGEventChannel
     private let appleScriptChannel: AppleScriptChannel
     private let runtimeOverrides: LogicProServerRuntimeOverrides?
@@ -390,6 +393,8 @@ actor LogicProServer {
         self.poller = StatePoller(
             axChannel: axChannel,
             cache: cache,
+            facts: axFacts,
+            readBlockingDialog: { await Self.readBlockingDialog(axChannel: axChannel) },
             runtime: pollerRuntime,
             postPoll: { cacheKeys in
                 await resourceNotifier.publishChangedResources(
@@ -428,6 +433,27 @@ actor LogicProServer {
 
     // MARK: - Tool Registration (10 dispatchers)
 
+    /// Ask the helper whether a blocking dialog owns a Logic window. `nil` also
+    /// means "could not tell" — callers treat that as no evidence of a dialog,
+    /// the same as the AX path did.
+    private static func readBlockingDialog(
+        axChannel: any AccessibilityChannelProtocol
+    ) async -> AXLogicProElements.BlockingDialogInfo? {
+        let result = await axChannel.execute(operation: "system.blocking_dialog", params: [:])
+        guard case let .success(json) = result, json != "null",
+              let data = json.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        return AXLogicProElements.BlockingDialogInfo(
+            title: object["title"] as? String ?? "",
+            role: object["role"] as? String ?? "",
+            owningWindow: object["owning_window"] as? String ?? "",
+            buttonTitles: object["button_titles"] as? [String] ?? [],
+            recoveryAction: object["recovery_action"] as? String ?? ""
+        )
+    }
+
     func makeHandlers(
         dialogPresent: @escaping @Sendable () -> Bool = { false },
         supportBundleExporter: SystemDispatcher.SupportBundleExporter? = nil
@@ -446,7 +472,8 @@ actor LogicProServer {
             dialogPresent: dialogPresent,
             supportBundleExporter: supportBundleExporter,
             sagaJournal: sagaJournal,
-            mutationGate: mutationGate
+            mutationGate: mutationGate,
+            axFacts: self.axFacts
         )
 
         return LogicProServerHandlers(
@@ -1114,9 +1141,13 @@ actor LogicProServer {
     }
 
     private func registerTools(
-        dialogPresent: @escaping @Sendable () -> Bool = { AXLogicProElements.dialogPresent() }
+        dialogPresent: (@Sendable () -> Bool)? = nil
     ) async {
-        let handlers = makeHandlers(dialogPresent: dialogPresent)
+        // Default: what the helper saw at the last refresh. The server's own AX
+        // is nil under the sandbox, so reading it here refused nothing and
+        // proved nothing.
+        let facts = self.axFacts
+        let handlers = makeHandlers(dialogPresent: dialogPresent ?? { facts.dialogPresent })
         let poller = self.poller
         await server.withMethodHandler(ListTools.self) { params in
             if let error = Self.invalidCursorError(params.cursor, method: "tools/list") { throw error }

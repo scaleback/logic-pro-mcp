@@ -22,6 +22,10 @@ struct HandlerDependencies: Sendable {
     /// real handler would be live AX, and their index path would silently drop
     /// out of the deterministic census.
     let liveTrackNames: (@Sendable () -> [Int: String]?)?
+    /// What the helper observed at the last refresh (see `AXFacts`). The server
+    /// is sandboxed, so its guards read identity and dialogs from here instead
+    /// of calling Accessibility themselves.
+    let axFacts: AXFacts?
     /// #412: the shared absolute saga lifecycle deadline, computed once at the
     /// server dispatch entry and threaded to `SystemDispatcher.saga_execute` so
     /// its in-closure abandon race and the outer transport timer derive from ONE
@@ -40,6 +44,7 @@ struct HandlerDependencies: Sendable {
         sagaJournal: SagaJournal = SagaJournal(),
         mutationGate: LogicMutationGate? = nil,
         projectLifecycleExecute: (@Sendable (String) async -> ProjectDispatcher.LifecycleExecution)? = nil,
+        axFacts: AXFacts? = nil,
         liveTrackNames: (@Sendable () -> [Int: String]?)? = nil,
         sagaLifecycleDeadline: ContinuousClock.Instant? = nil
     ) {
@@ -52,14 +57,17 @@ struct HandlerDependencies: Sendable {
         self.sagaJournal = sagaJournal
         self.mutationGate = mutationGate
         self.projectLifecycleExecute = projectLifecycleExecute
+        self.axFacts = axFacts
         self.liveTrackNames = liveTrackNames
         self.sagaLifecycleDeadline = sagaLifecycleDeadline
     }
 
-    /// The live header reader to hand a dispatcher: the injected seam when a
-    /// test supplies one, else the production AX scan.
+    /// The header reader to hand a dispatcher: the injected seam when a test
+    /// supplies one, else what the helper read at the last refresh. Never the
+    /// server's own AX — sandboxed, that returns nil and the corroboration
+    /// fails closed (live 2026-09-19: load_preset blocked by header_unreadable).
     var liveTrackNamesReader: @Sendable () -> [Int: String]? {
-        liveTrackNames ?? { AXLogicProElements.trackNames() }
+        liveTrackNames ?? { [axFacts] in axFacts?.trackNames }
     }
 
     /// #412: a per-call copy carrying the shared saga lifecycle deadline. The
@@ -265,7 +273,7 @@ enum OperationHandlerRegistry {
                     // ADR-002 F5 — production dispatch supplies the live AX
                     // track-header reader so the target_ref mutation boundary
                     // fails closed on an out-of-band reorder.
-                    liveTrackName: { AXLogicProElements.trackName(at: $0) },
+                    liveTrackName: { [dependencies] in dependencies.liveTrackNamesReader()?[$0] },
                     liveTrackNames: dependencies.liveTrackNamesReader
                 )
             }
@@ -298,7 +306,7 @@ enum OperationHandlerRegistry {
                     // ADR-002 F5 — production dispatch supplies the live AX
                     // track-header reader so saga-replayed target_ref track/mixer
                     // steps fail closed on an out-of-band reorder.
-                    liveTrackName: { AXLogicProElements.trackName(at: $0) },
+                    liveTrackName: { [dependencies] in dependencies.liveTrackNamesReader()?[$0] },
                     liveTrackNames: dependencies.liveTrackNamesReader,
                     // LPMCP-PRD-004 — saga before-state/verification/compensation
                     // read the live AX surface, never the cache mirror.
@@ -337,7 +345,9 @@ enum OperationHandlerRegistry {
                         cache: dependencies.cache,
                         targetRegistry: dependencies.targetRegistry,
                         executeLifecycleScript: lifecycle,
-                        dialogPresent: dependencies.dialogPresent
+                        dialogPresent: dependencies.dialogPresent,
+                        blockingDialogInfo: { [dependencies] in dependencies.axFacts?.blockingDialog },
+                        exportOptions: .live(dialogPresent: dependencies.dialogPresent)
                     )
                 }
                 return await ProjectDispatcher.handle(
@@ -346,7 +356,9 @@ enum OperationHandlerRegistry {
                     router: dependencies.router,
                     cache: dependencies.cache,
                     targetRegistry: dependencies.targetRegistry,
-                    dialogPresent: dependencies.dialogPresent
+                    dialogPresent: dependencies.dialogPresent,
+                    blockingDialogInfo: { [dependencies] in dependencies.axFacts?.blockingDialog },
+                    exportOptions: .live(dialogPresent: dependencies.dialogPresent)
                 )
             }
         case .logicMidi:
@@ -376,7 +388,7 @@ enum OperationHandlerRegistry {
                     // ADR-002 F5 — production dispatch supplies the live AX
                     // track-header reader so the target_ref mutation boundary
                     // fails closed on an out-of-band reorder.
-                    liveTrackName: { AXLogicProElements.trackName(at: $0) },
+                    liveTrackName: { [dependencies] in dependencies.liveTrackNamesReader()?[$0] },
                     liveTrackNames: dependencies.liveTrackNamesReader
                 )
             }
